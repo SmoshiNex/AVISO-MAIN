@@ -4,17 +4,24 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+    server: {
+        watch: {
+            usePolling: true,
+        },
+    },
+    optimizeDeps: {
+        include: [
+            'recharts',
+            'react-is',
+            'boneyard-js/react',
+        ],
+    },
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
+            input: 'resources/js/app.tsx',
             refresh: true,
         }),
         react(),
         tailwindcss(),
     ],
-    server: {
-        watch: {
-            ignored: ['**/storage/framework/views/**'],
-        },
-    },
 });
