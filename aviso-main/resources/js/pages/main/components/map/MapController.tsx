@@ -1,18 +1,25 @@
 import { useMap } from '@/components/ui/map';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Mountain, RefreshCw, Layers } from 'lucide-react';
+import { RotateCcw, Mountain, RefreshCw, Layers, Sun, Moon, Sunset, Sunrise, Car } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { mockHazards } from '@/data/mockHazards';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { type HazardLog } from '@/types/models';
 
-const ZAMBOANGA: [number, number] = [122.0739, 6.9214];
+// Shifted camera center slightly North so the riders load at the bottom of the screen
+const ZAMBOANGA: [number, number] = [122.0739, 6.9350];
 
-export function MapController() {
+interface MapControllerProps {
+    hazards?: HazardLog[];
+}
+
+export function MapController({ hazards = [] }: MapControllerProps) {
     const { map, isLoaded } = useMap();
     const [pitch, setPitch]   = useState(0);
     const [bearing, setBearing] = useState(0);
     const [is3D, setIs3D]     = useState(false);
     const [showHeatmap, setShowHeatmap] = useState(false);
-    const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>('day');
+    const [showTraffic, setShowTraffic] = useState(false);
+    const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>('night');
     
     // 360° Auto-Rotate state
     const [isRotating, setIsRotating] = useState(false);
@@ -25,22 +32,39 @@ export function MapController() {
         initRef.current = true;
         map.jumpTo({ center: ZAMBOANGA, zoom: 14 });
         
-        map.setConfigProperty('basemap', 'showPointOfInterestLabels', true);
-        map.setConfigProperty('basemap', 'showPlaceLabels', true);
-        map.setConfigProperty('basemap', 'showRoadLabels', true);
+        // Add Mapbox Live Traffic Source
+        if (!map.getSource('traffic')) {
+            map.addSource('traffic', {
+                type: 'vector',
+                url: 'mapbox://mapbox.mapbox-traffic-v1'
+            });
+
+            map.addLayer({
+                id: 'traffic-line',
+                type: 'line',
+                source: 'traffic',
+                'source-layer': 'traffic',
+                layout: { visibility: 'none' }, // hidden by default
+                paint: {
+                    'line-color': [
+                        'match', ['get', 'congestion'],
+                        'low', '#4ade80',     // green
+                        'moderate', '#eab308',// yellow
+                        'heavy', '#ef4444',   // red
+                        'severe', '#7f1d1d',  // dark red
+                        '#4ade80'             // default green
+                    ],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 15, 5, 20, 8],
+                    'line-opacity': 0.8
+                }
+            }); // Insert on top
+        }
 
         // Add Heatmap Source & Layer
         if (!map.getSource('hazards-source')) {
             map.addSource('hazards-source', {
                 type: 'geojson',
-                data: {
-                    type: 'FeatureCollection',
-                    features: mockHazards.map(h => ({
-                        type: 'Feature',
-                        geometry: { type: 'Point', coordinates: h.coordinates },
-                        properties: { confidence: h.confidence }
-                    }))
-                }
+                data: { type: 'FeatureCollection', features: [] }
             });
 
             map.addLayer({
@@ -70,10 +94,34 @@ export function MapController() {
         }
     }, [map, isLoaded]);
 
-    // Apply Light Preset
+    // Update Heatmap Data Source
     useEffect(() => {
         if (!map || !isLoaded) return;
-        map.setConfigProperty('basemap', 'lightPreset', lightPreset);
+        const source = map.getSource('hazards-source');
+        if (source) {
+            const heatmapHazards = hazards.filter(h => 
+                ['Pothole', 'Road Excavation', 'Road Barrier'].includes(h.type)
+            );
+
+            (source as any).setData({
+                type: 'FeatureCollection',
+                features: heatmapHazards.map(h => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [h.longitude, h.latitude] },
+                    properties: { confidence: h.confidence }
+                }))
+            });
+        }
+    }, [map, isLoaded, hazards]);
+
+    // Apply Light Preset (Requires mapbox standard style)
+    useEffect(() => {
+        if (!map || !isLoaded) return;
+        try {
+            map.setConfigProperty('basemap', 'lightPreset', lightPreset);
+        } catch (e) {
+            // Ignored if map style is not mapbox standard
+        }
     }, [lightPreset, map, isLoaded]);
 
     // Apply Heatmap Visibility
@@ -81,6 +129,12 @@ export function MapController() {
         if (!map || !isLoaded || !map.getLayer('hazards-heat')) return;
         map.setLayoutProperty('hazards-heat', 'visibility', showHeatmap ? 'visible' : 'none');
     }, [showHeatmap, map, isLoaded]);
+
+    // Apply Traffic Visibility
+    useEffect(() => {
+        if (!map || !isLoaded || !map.getLayer('traffic-line')) return;
+        map.setLayoutProperty('traffic-line', 'visibility', showTraffic ? 'visible' : 'none');
+    }, [showTraffic, map, isLoaded]);
 
     // Track camera values for overlay
     useEffect(() => {
@@ -121,8 +175,7 @@ export function MapController() {
     const handle3DView = () => {
         if (!map || is3D) return;
         setIs3D(true);
-        map.setConfigProperty('basemap', 'show3dObjects', true);
-        if (lightPreset === 'day') setLightPreset('dusk'); // Auto-switch to dusk for better 3D look
+        try { map.setConfigProperty('basemap', 'show3dObjects', true); } catch(e) {}
         map.easeTo({ pitch: 60, bearing: -20, duration: 1200 });
     };
 
@@ -130,7 +183,7 @@ export function MapController() {
         if (!map) return;
         stopRotation();
         setIs3D(false);
-        map.setConfigProperty('basemap', 'show3dObjects', false);
+        try { map.setConfigProperty('basemap', 'show3dObjects', false); } catch(e) {}
         map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
     };
 
@@ -164,19 +217,51 @@ export function MapController() {
                     Heatmap
                 </Button>
 
+                {/* Traffic Toggle */}
+                <Button 
+                    size="sm" 
+                    variant={showTraffic ? 'default' : 'ghost'} 
+                    onClick={() => setShowTraffic(!showTraffic)}
+                    className={showTraffic ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+                >
+                    <Car className="mr-1.5 h-4 w-4" />
+                    Traffic
+                </Button>
+
                 <div className="w-px h-5 bg-border mx-1" />
 
-                {/* Light Preset Toggle */}
-                <select 
-                    value={lightPreset} 
-                    onChange={(e) => setLightPreset(e.target.value as any)}
-                    className="bg-transparent border border-input rounded-md px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                >
-                    <option value="day">☀️ Day</option>
-                    <option value="night">🌙 Night</option>
-                    <option value="dusk">🌅 Dusk</option>
-                    <option value="dawn">🌄 Dawn</option>
-                </select>
+                {/* Light Preset Toggle (Shadcn Select with Lucide Icons) */}
+                <Select value={lightPreset} onValueChange={(val: any) => setLightPreset(val)}>
+                    <SelectTrigger className="w-[110px] h-8 bg-transparent border-none shadow-none focus:ring-0 px-2 py-0">
+                        <SelectValue placeholder="Theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="day">
+                            <div className="flex items-center">
+                                <Sun className="w-4 h-4 mr-2" />
+                                Day
+                            </div>
+                        </SelectItem>
+                        <SelectItem value="night">
+                            <div className="flex items-center">
+                                <Moon className="w-4 h-4 mr-2" />
+                                Night
+                            </div>
+                        </SelectItem>
+                        <SelectItem value="dusk">
+                            <div className="flex items-center">
+                                <Sunset className="w-4 h-4 mr-2" />
+                                Dusk
+                            </div>
+                        </SelectItem>
+                        <SelectItem value="dawn">
+                            <div className="flex items-center">
+                                <Sunrise className="w-4 h-4 mr-2" />
+                                Dawn
+                            </div>
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
 
                 {/* 360° rotate — only shown in 3D mode */}
                 {is3D && (
@@ -196,6 +281,7 @@ export function MapController() {
                 {is3D && <div className="text-primary mt-1 font-semibold">● 3D Mode</div>}
                 {isRotating && <div className="text-yellow-500 font-semibold">↻ Rotating 360°</div>}
                 {showHeatmap && <div className="text-orange-500 font-semibold">🔥 Heatmap Active</div>}
+                {showTraffic && <div className="text-green-500 font-semibold">🚦 Traffic Layer Active</div>}
             </div>
         </div>
     );

@@ -145,3 +145,23 @@
     @apply hidden!;
     }
 }
+
+/* Force Sileo Toaster to ALWAYS have a dark background, white text, and centered messages */
+[data-sileo-svg] path {
+    fill: #09090b !important;
+}
+[data-sileo-content] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    width: 100% !important;
+}
+[data-sileo-title],
+[data-sileo-description] {
+    color: #fafafa !important;
+    text-align: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+}

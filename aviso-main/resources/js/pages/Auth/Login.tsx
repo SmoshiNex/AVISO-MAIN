@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from "@inertiajs/react";
 import { FormEventHandler, useState } from "react";
+import { toast } from "@/lib/toast";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,12 @@ export default function Login({
         e.preventDefault();
         post(route("login"), {
             onFinish: () => reset("password"),
+            onError: (err) => {
+                toast.error({
+                    title: "Login Failed",
+                    description: Object.values(err)[0] as string || "Invalid credentials."
+                });
+            }
         });
     };
 
@@ -90,17 +97,7 @@ export default function Login({
                         </div>
 
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Password</Label>
-                                {canResetPassword && (
-                                    <Link
-                                        href={route("password.request")}
-                                        className="text-sm font-medium text-primary hover:underline"
-                                    >
-                                        Forgot password?
-                                    </Link>
-                                )}
-                            </div>
+                            <Label htmlFor="password">Password</Label>
                             <div className="relative">
                                 <Input
                                     id="password"
@@ -136,21 +133,32 @@ export default function Login({
                             )}
                         </div>
 
-                        <div className="flex items-center space-x-3 pt-4 pb-2">
-                            <Checkbox
-                                id="remember"
-                                checked={data.remember}
-                                onCheckedChange={(checked) =>
-                                    setData("remember", checked === true)
-                                }
-                                className="h-5 w-5 border-2 border-primary/50 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                            />
-                            <Label
-                                htmlFor="remember"
-                                className="text-sm font-medium leading-none cursor-pointer select-none"
-                            >
-                                Remember me
-                            </Label>
+                        <div className="flex items-center justify-between pt-4 pb-2">
+                            <div className="flex items-center space-x-3">
+                                <Checkbox
+                                    id="remember"
+                                    checked={data.remember}
+                                    onCheckedChange={(checked) =>
+                                        setData("remember", checked === true)
+                                    }
+                                    className="h-5 w-5 border-2 border-primary/50 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                                />
+                                <Label
+                                    htmlFor="remember"
+                                    className="text-sm font-medium leading-none cursor-pointer select-none"
+                                >
+                                    Remember me
+                                </Label>
+                            </div>
+                            
+                            {canResetPassword && (
+                                <Link
+                                    href={route("password.request")}
+                                    className="text-sm font-medium text-primary hover:underline"
+                                >
+                                    Forgot password?
+                                </Link>
+                            )}
                         </div>
 
                         <Button

@@ -1,0 +1,384 @@
+import { useState } from "react";
+import { router } from "@inertiajs/react";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import {
+    Search,
+    AlertCircle,
+    Cone,
+    Construction,
+    MapPin,
+    StopCircle,
+    ChevronLeft,
+    ChevronRight,
+} from "lucide-react";
+import { type HazardLog, type PaginatedData } from "@/types/models";
+
+interface HazardTableProps {
+    hazards: PaginatedData<HazardLog>;
+    filters: {
+        search?: string;
+        type?: string;
+        area?: string;
+        status?: string;
+    };
+    types: string[];
+    areas: string[];
+}
+
+export function HazardTable({
+    hazards,
+    filters,
+    types,
+    areas,
+}: HazardTableProps) {
+    const [searchQuery, setSearchQuery] = useState(filters.search || "");
+
+    const handleFilterChange = (
+        key: "type" | "area" | "status",
+        value: string,
+    ) => {
+        router.get(
+            route("hazards.index"),
+            {
+                ...filters,
+                search: searchQuery,
+                [key]: value,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    };
+
+    const submitSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.get(
+            route("hazards.index"),
+            {
+                ...filters,
+                search: searchQuery,
+            },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
+
+    const getIcon = (type: string) => {
+        switch (type) {
+            case "Pothole":
+                return <AlertCircle className="w-4 h-4" />;
+            case "Road Excavation":
+                return <Construction className="w-4 h-4" />;
+            case "Road Barrier":
+                return <Cone className="w-4 h-4" />;
+            case "Traffic Sign":
+                return <MapPin className="w-4 h-4" />;
+            case "Traffic Light":
+                return <StopCircle className="w-4 h-4" />;
+            default:
+                return <AlertCircle className="w-4 h-4" />;
+        }
+    };
+
+    const getColor = (type: string) => {
+        switch (type) {
+            case "Pothole":
+                return "text-red-600 bg-red-100 border-red-200 dark:bg-red-900/30 dark:border-red-900";
+            case "Road Excavation":
+                return "text-orange-600 bg-orange-100 border-orange-200 dark:bg-orange-900/30 dark:border-orange-900";
+            case "Road Barrier":
+                return "text-yellow-600 bg-yellow-100 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-900";
+            case "Traffic Sign":
+                return "text-blue-600 bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-900";
+            case "Traffic Light":
+                return "text-green-600 bg-green-100 border-green-200 dark:bg-green-900/30 dark:border-green-900";
+            default:
+                return "text-gray-600 bg-gray-100 border-gray-200";
+        }
+    };
+
+    return (
+        <Card className="border-border/50 shadow-sm">
+            {/* Filters */}
+            <div className="p-4 border-b flex flex-col sm:flex-row gap-4 items-center bg-muted/20">
+                <form
+                    onSubmit={submitSearch}
+                    className="relative w-full sm:w-72"
+                >
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search code or rider..."
+                        className="pl-9 bg-background"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </form>
+
+                <div className="flex w-full sm:w-auto gap-3 flex-1 sm:justify-end">
+                    <Select
+                        value={filters.type || "all"}
+                        onValueChange={(v) => handleFilterChange("type", v)}
+                    >
+                        <SelectTrigger className="w-[140px] bg-background">
+                            <SelectValue placeholder="All Types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            {types.map((t) => (
+                                <SelectItem key={t} value={t}>
+                                    {t}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={filters.area || "all"}
+                        onValueChange={(v) => handleFilterChange("area", v)}
+                    >
+                        <SelectTrigger className="w-[160px] bg-background">
+                            <SelectValue placeholder="All Areas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Areas</SelectItem>
+                            {areas.map((a) => (
+                                <SelectItem key={a} value={a}>
+                                    {a}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={filters.status || "all"}
+                        onValueChange={(v) => handleFilterChange("status", v)}
+                    >
+                        <SelectTrigger className="w-[130px] bg-background">
+                            <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="resolved">Resolved</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="relative w-full overflow-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-muted/30">
+                            <TableHead className="w-[100px] font-semibold">
+                                Code
+                            </TableHead>
+                            <TableHead className="font-semibold">
+                                Classification
+                            </TableHead>
+                            <TableHead className="font-semibold">
+                                Area
+                            </TableHead>
+                            <TableHead className="font-semibold">
+                                Confidence
+                            </TableHead>
+                            <TableHead className="font-semibold">
+                                Distance
+                            </TableHead>
+                            <TableHead className="font-semibold">
+                                Rider
+                            </TableHead>
+                            <TableHead className="font-semibold">
+                                Detected At
+                            </TableHead>
+                            <TableHead className="font-semibold text-right">
+                                Status
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {hazards.data.length === 0 ? (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={8}
+                                    className="h-32 text-center text-muted-foreground"
+                                >
+                                    No hazards found matching your filters.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            hazards.data.map((hazard) => (
+                                <TableRow
+                                    key={hazard.id}
+                                    className="hover:bg-muted/20"
+                                >
+                                    <TableCell className="font-mono text-xs">
+                                        {hazard.haz_code}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge
+                                            variant="outline"
+                                            className={`gap-1.5 py-1 pr-3 pl-2 font-normal ${getColor(hazard.type)}`}
+                                        >
+                                            {getIcon(hazard.type)}
+                                            {hazard.type}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                        {hazard.area}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <Progress
+                                                value={hazard.confidence}
+                                                className="w-16 h-2"
+                                            />
+                                            <span className="text-xs font-mono text-muted-foreground">
+                                                {hazard.confidence}%
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-sm font-mono text-muted-foreground">
+                                        {hazard.distance}m
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                        {hazard.rider_code}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                        {new Date(
+                                            hazard.detected_at,
+                                        ).toLocaleString([], {
+                                            month: "short",
+                                            day: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Badge
+                                            variant={
+                                                hazard.status === "active"
+                                                    ? "default"
+                                                    : "secondary"
+                                            }
+                                            className={
+                                                hazard.status === "active"
+                                                    ? "bg-red-500 hover:bg-red-600"
+                                                    : ""
+                                            }
+                                        >
+                                            {hazard.status}
+                                        </Badge>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            {/* Pagination */}
+            {hazards.last_page > 1 && (
+                <div className="p-4 border-t flex items-center justify-between text-sm text-muted-foreground">
+                    <div>
+                        Showing{" "}
+                        <span className="font-medium text-foreground">
+                            {(hazards.current_page - 1) * hazards.per_page + 1}
+                        </span>{" "}
+                        to{" "}
+                        <span className="font-medium text-foreground">
+                            {Math.min(
+                                hazards.current_page * hazards.per_page,
+                                hazards.total,
+                            )}
+                        </span>{" "}
+                        of{" "}
+                        <span className="font-medium text-foreground">
+                            {hazards.total}
+                        </span>{" "}
+                        entries
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={hazards.current_page === 1}
+                            onClick={() =>
+                                router.get(hazards.links[0].url as string)
+                            }
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+
+                        <div className="flex items-center gap-1">
+                            {hazards.links.slice(1, -1).map((link, i) => {
+                                // Handle "..." ellipsis
+                                if (link.label === "...") {
+                                    return (
+                                        <span key={i} className="px-2">
+                                            ...
+                                        </span>
+                                    );
+                                }
+
+                                return (
+                                    <Button
+                                        key={i}
+                                        variant={
+                                            link.active ? "default" : "outline"
+                                        }
+                                        size="sm"
+                                        className={`h-8 w-8 p-0 ${link.active ? "bg-primary text-primary-foreground" : ""}`}
+                                        onClick={() =>
+                                            link.url && router.get(link.url)
+                                        }
+                                        dangerouslySetInnerHTML={{
+                                            __html: link.label,
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={
+                                hazards.current_page === hazards.last_page
+                            }
+                            onClick={() =>
+                                router.get(
+                                    hazards.links[hazards.links.length - 1]
+                                        .url as string,
+                                )
+                            }
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </Card>
+    );
+}

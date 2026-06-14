@@ -27,6 +27,7 @@ class User extends Authenticatable
         'contact_number',
         'address',
         'password',
+        'role',
     ];
 
     /**
@@ -50,5 +51,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Get the emergency contacts for the user.
+     */
+    public function emergencyContacts()
+    {
+        return $this->hasMany(EmergencyContact::class);
     }
 }

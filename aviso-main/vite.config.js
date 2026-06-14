@@ -16,6 +16,10 @@ export default defineConfig({
             'boneyard-js/react',
         ],
     },
+    assetsInclude: ['**/*.geojson'],
+    json: {
+        stringify: false, // Parse JSON files instead of stringifying them
+    },
     plugins: [
         laravel({
             input: 'resources/js/app.tsx',

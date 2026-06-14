@@ -11,18 +11,46 @@ import {
     ChartLegendContent,
 } from '@/components/ui/chart';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts';
-import {
-    dashboardStats,
-    hazardsOverTimeData,
-    hazardsChartConfig,
-    hazardTypesData,
-    hazardTypesChartConfig,
-    HAZARD_TYPE_COLORS,
-    detectionAccuracyData,
-    detectionAccuracyChartConfig,
-} from '@/data/dashboardData';
+import { ChartConfig } from '@/components/ui/chart';
 
-export default function Dashboard() {
+const hazardsChartConfig = {
+    potholes:           { label: 'Potholes',                color: 'oklch(0.577 0.245 27.325)'  },
+    roadExcavation:     { label: 'Road Excavation',         color: 'oklch(0.705 0.213 47.604)'  },
+    roadBarriers:       { label: 'Road Barriers',           color: 'oklch(0.795 0.184 86.047)'  },
+    trafficSigns:       { label: 'Traffic Signs',           color: 'oklch(0.600 0.180 240.000)' },
+    trafficLightRed:    { label: 'Traffic Light (Red)',     color: 'oklch(0.637 0.237 15.330)'  },
+    trafficLightGreen:  { label: 'Traffic Light (Green)',   color: 'oklch(0.627 0.194 149.214)' },
+    trafficLightOrange: { label: 'Traffic Light (Orange)',  color: 'oklch(0.750 0.183 55.934)'  },
+} satisfies ChartConfig;
+
+const hazardTypesChartConfig = hazardsChartConfig;
+
+const HAZARD_TYPE_COLORS = [
+    'oklch(0.577 0.245 27.325)',  // Potholes — deep red
+    'oklch(0.705 0.213 47.604)',  // Road Excavation — orange
+    'oklch(0.795 0.184 86.047)',  // Road Barriers — yellow
+    'oklch(0.600 0.180 240.000)', // Traffic Signs — blue
+    'oklch(0.637 0.237 15.330)',  // Traffic Light Red
+    'oklch(0.627 0.194 149.214)', // Traffic Light Green
+    'oklch(0.750 0.183 55.934)',  // Traffic Light Orange
+] as const;
+
+const detectionAccuracyChartConfig = {
+    accuracy: { label: 'Accuracy %', color: 'var(--primary)' },
+} satisfies ChartConfig;
+interface DashboardProps {
+    dashboardStats: any[];
+    hazardTypesData: any[];
+    detectionAccuracyData: any[];
+    hazardsOverTimeData: any[];
+}
+
+export default function Dashboard({
+    dashboardStats,
+    hazardTypesData,
+    detectionAccuracyData,
+    hazardsOverTimeData,
+}: DashboardProps) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {

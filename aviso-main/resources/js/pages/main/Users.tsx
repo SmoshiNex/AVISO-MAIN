@@ -1,0 +1,42 @@
+import { Head } from '@inertiajs/react';
+import AdminLayout from '@/layouts/AdminLayout';
+import { UserStats } from './components/users/UserStats';
+import { UserManager } from './components/users/UserManager';
+import { type User, type PaginatedData } from '@/types/models';
+
+interface PageProps {
+    users: PaginatedData<User>;
+    stats: {
+        total: number;
+        admins: number;
+        riders: number;
+    };
+    filters: {
+        search?: string;
+        role?: string;
+    };
+}
+
+export default function Users({ users, stats, filters }: PageProps) {
+    return (
+        <AdminLayout>
+            <Head title="User Management" />
+
+            {/* Header */}
+            <div className="mb-6">
+                <h1 className="text-3xl font-heading font-bold tracking-tight">User Management</h1>
+                <p className="text-muted-foreground mt-1">
+                    Manage administrators and edge-device riders.
+                </p>
+            </div>
+
+            <UserStats stats={stats} />
+
+            <UserManager 
+                users={users} 
+                filters={filters} 
+            />
+            
+        </AdminLayout>
+    );
+}

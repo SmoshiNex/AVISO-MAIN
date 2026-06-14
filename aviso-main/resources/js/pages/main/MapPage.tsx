@@ -1,18 +1,82 @@
 import { Head } from '@inertiajs/react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Map, MapControls } from '@/components/ui/map';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Skeleton } from 'boneyard-js/react';
+import { AlertCircle, Cone, Construction, MapPin, StopCircle } from 'lucide-react';
 
 // Subcomponents
 import { SearchBox } from './components/map/SearchBox';
 import { HazardPins } from './components/map/HazardPins';
 import { MapController } from './components/map/MapController';
+import { LiveRiders } from './components/map/LiveRiders';
+import { getHazardColor, getHazardTailwindColors } from '@/lib/hazards';
+import { type HazardLog } from '@/types/models';
 
 const STYLE_STANDARD = 'mapbox://styles/mapbox/standard';
 
-export default function MapPage() {
+const HAZARD_STATS: {
+    type: string;
+    label: string;
+    icon: React.ReactNode;
+    description: string;
+}[] = [
+    {
+        type: 'Pothole',
+        label: 'Potholes',
+        icon: <AlertCircle className="w-5 h-5" />,
+        description: 'Surface defects',
+    },
+    {
+        type: 'Road Excavation',
+        label: 'Excavations',
+        icon: <Construction className="w-5 h-5" />,
+        description: 'Active digging',
+    },
+    {
+        type: 'Road Barrier',
+        label: 'Road Barriers',
+        icon: <Cone className="w-5 h-5" />,
+        description: 'Blocked lanes',
+    },
+    {
+        type: 'Traffic Sign',
+        label: 'Traffic Signs',
+        icon: <MapPin className="w-5 h-5" />,
+        description: 'Signage detected',
+    },
+    {
+        type: 'Traffic Light',
+        label: 'Traffic Lights',
+        icon: <StopCircle className="w-5 h-5" />,
+        description: 'Faulty signals',
+    },
+];
+
+interface MapPageProps {
+    hazards: HazardLog[];
+}
+
+function RealTimeClock() {
+    const [time, setTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div className="font-heading flex flex-col text-right border border-border/50 bg-background/50 backdrop-blur-sm p-3 rounded-xl shadow-sm">
+            <span className="text-xl font-bold tracking-tight leading-none mb-1 text-primary">{time.toLocaleTimeString()}</span>
+            <span className="text-xs text-muted-foreground font-medium">
+                {time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+        </div>
+    );
+}
+
+export default function MapPage({ hazards }: MapPageProps) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -24,13 +88,55 @@ export default function MapPage() {
         <AdminLayout>
             <Head title="Live Map" />
 
-            <div className="mb-6">
-                <h1 className="text-3xl font-heading font-bold tracking-tight">Live Map Tracker</h1>
-                <p className="text-muted-foreground mt-1">
-                    Monitor real-time road hazards and system edge devices.
-                </p>
+            <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                <div>
+                    <h1 className="text-3xl font-heading font-bold tracking-tight">Live Map Tracker</h1>
+                    <p className="text-muted-foreground mt-1">
+                        Monitor real-time road hazards and system edge devices.
+                    </p>
+                </div>
+                <RealTimeClock />
             </div>
 
+            {/* ── Stats row ─────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+                {HAZARD_STATS.map((stat) => {
+                    return (
+                        <Card
+                            key={stat.type}
+                            className="border-border/50 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                        >
+                            <CardContent className="p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className={`p-2 rounded-lg bg-background shadow-sm border`}>
+                                        <div className={getHazardTailwindColors(stat.type).split(' ')[0]}>
+                                            {stat.icon}
+                                        </div>
+                                    </div>
+                                    <div className="text-2xl font-bold font-heading">
+                                        {hazards.filter(h => h.type === stat.type).length}
+                                    </div>
+                                </div>
+                                {/* Label */}
+                                <p className="text-sm font-medium leading-snug">{stat.label}</p>
+
+                                {/* Description + colored accent line */}
+                                <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                                    {stat.description}
+                                </p>
+
+                                {/* Bottom accent bar */}
+                                <div
+                                    className="h-0.5 rounded-full mt-3 opacity-60"
+                                    style={{ backgroundColor: getHazardColor(stat.type) }}
+                                />
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
+
+            {/* ── Map card ──────────────────────────────────────────── */}
             <Skeleton loading={isLoading} animate="pulse" transition>
                 <Card className="h-[700px] flex flex-col overflow-hidden border-border/50 shadow-md">
                     <div className="w-full h-full relative">
@@ -38,9 +144,10 @@ export default function MapPage() {
                             styles={{ light: STYLE_STANDARD, dark: STYLE_STANDARD }}
                             className="w-full h-full relative"
                         >
-                            <MapController />
+                            <MapController hazards={hazards} />
+                            <HazardPins hazards={hazards} />
+                            <LiveRiders />
                             <SearchBox />
-                            <HazardPins />
                             <MapControls position="top-right" showZoom showCompass />
                         </Map>
                     </div>

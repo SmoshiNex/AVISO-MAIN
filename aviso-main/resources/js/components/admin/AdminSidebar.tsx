@@ -1,4 +1,6 @@
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
+import { useState } from "react";
+import { toast } from "@/lib/toast";
 import {
     Map,
     AlertTriangle,
@@ -6,6 +8,7 @@ import {
     Settings,
     LogOut,
     LayoutDashboard,
+    Users,
 } from "lucide-react";
 import {
     Sidebar,
@@ -19,32 +22,67 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
-const items = [
+const navGroups = [
     {
-        title: "Dashboard",
-        url: "/dashboard",
-        icon: LayoutDashboard,
+        title: "TRACKING & LOGS",
+        items: [
+            {
+                title: "Live Map",
+                url: "/map",
+                icon: Map,
+            },
+            {
+                title: "Hazards Log",
+                url: "/hazards",
+                icon: AlertTriangle,
+            },
+        ],
     },
     {
-        title: "Live Map",
-        url: "/map",
-        icon: Map,
+        title: "MANAGEMENT",
+        items: [
+            {
+                title: "User Management",
+                url: "/users",
+                icon: Users,
+            },
+        ],
     },
     {
-        title: "Hazards Log",
-        url: "/hazards",
-        icon: AlertTriangle,
-    },
-    {
-        title: "Settings",
-        url: "#",
-        icon: Settings,
+        title: "CONFIGURATION",
+        items: [
+            {
+                title: "Settings",
+                url: "#",
+                icon: Settings,
+            },
+        ],
     },
 ];
 
 export default function AdminSidebar() {
-    const { url } = usePage();
+    const { url, props } = usePage<any>();
+    const user = props.auth?.user;
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+    const executeLogout = () => {
+        toast.setPending("info", "You have been successfully logged out.");
+        router.post(route("logout"));
+    };
+
+    const initial = user?.first_name ? user.first_name.charAt(0).toUpperCase() : "A";
+    const fullName = user ? `${user.first_name} ${user.last_name}` : "Admin";
+    const roleLabel = user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Admin";
 
     return (
         <Sidebar collapsible="icon">
@@ -68,62 +106,115 @@ export default function AdminSidebar() {
                 </div>
             </SidebarHeader>
             <SidebarContent>
-                <SidebarGroup>
-                    <SidebarGroupLabel>Menu</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {items.map((item) => {
-                                // simple check if current url starts with item url (or matches exactly)
-                                const isActive =
-                                    item.url === "/dashboard"
-                                        ? url === "/dashboard" ||
-                                          url.startsWith("/dashboard?")
-                                        : item.url !== "#" &&
-                                          url.startsWith(item.url);
-
-                                return (
-                                    <SidebarMenuItem key={item.title}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            isActive={isActive}
-                                            className={
-                                                isActive
-                                                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                                                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                                            }
-                                        >
-                                            <Link href={item.url}>
-                                                <item.icon />
-                                                <span>{item.title}</span>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                );
-                            })}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
+                {/* Prominent Dashboard Block */}
+                <SidebarGroup className="pb-0 mt-2 px-3">
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton
+                                asChild
+                                className={`text-base py-4 rounded-md mb-2 transition-colors duration-200 ${
+                                    url === "/dashboard" || url.startsWith("/dashboard?")
+                                        ? "bg-black text-white dark:bg-white dark:text-black font-semibold shadow-sm"
+                                        : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                }`}
+                            >
+                                <Link href="/dashboard" className="flex items-center">
+                                    <LayoutDashboard className="w-5 h-5 mr-3" />
+                                    <span>Dashboard</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
                 </SidebarGroup>
+
+                {/* Grouped Navigation */}
+                {navGroups.map((group) => (
+                    <SidebarGroup key={group.title} className="pt-2 px-3">
+                        <SidebarGroupLabel className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-1">
+                            {group.title}
+                        </SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {group.items.map((item) => {
+                                    const isActive = item.url !== "#" && url.startsWith(item.url);
+                                    return (
+                                        <SidebarMenuItem key={item.title}>
+                                            <SidebarMenuButton
+                                                asChild
+                                                className={`text-base py-4 rounded-md my-0.5 ${
+                                                    isActive
+                                                        ? "bg-black text-white dark:bg-white dark:text-black font-semibold shadow-sm"
+                                                        : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                                }`}
+                                            >
+                                                <Link href={item.url} className="flex items-center">
+                                                    <item.icon className="w-5 h-5 mr-3" />
+                                                    <span>{item.title}</span>
+                                                </Link>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    );
+                                })}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                ))}
             </SidebarContent>
-            <SidebarFooter>
+            
+            <SidebarFooter className="p-4 border-t border-border/50">
+                {/* Admin Profile Section */}
+                <div className="flex items-center gap-3 mb-4 px-2 group-data-[collapsible=icon]:justify-center">
+                    <div className="w-10 h-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                        {initial}
+                    </div>
+                    <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+                        <span className="font-semibold text-sm leading-tight text-foreground truncate max-w-[140px]">{fullName}</span>
+                        <span className="text-xs text-muted-foreground">{roleLabel}</span>
+                    </div>
+                </div>
+
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             asChild
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="bg-destructive text-white hover:bg-destructive/90 hover:text-white font-semibold text-base py-5 rounded-md cursor-pointer justify-center group-data-[collapsible=icon]:justify-center transition-colors"
                         >
-                            <Link
-                                href={route("logout")}
-                                method="post"
-                                as="button"
-                                className="w-full justify-start"
-                            >
-                                <LogOut />
-                                <span>Log Out</span>
-                            </Link>
+                            <a onClick={() => setIsLogoutModalOpen(true)} className="flex items-center w-full justify-center">
+                                <LogOut className="w-5 h-5 group-data-[collapsible=icon]:mr-0 mr-2" />
+                                <span className="group-data-[collapsible=icon]:hidden">Log Out</span>
+                            </a>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>
+
+            <Dialog
+                open={isLogoutModalOpen}
+                onOpenChange={setIsLogoutModalOpen}
+            >
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">
+                            Log Out
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to end your session and log
+                            out of the admin portal?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsLogoutModalOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={executeLogout}>
+                            Log Out
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Sidebar>
     );
 }

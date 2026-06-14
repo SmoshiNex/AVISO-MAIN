@@ -18,7 +18,8 @@ class AdminAuthController extends Controller
     public function create(): Response
     {
         return Inertia::render('Auth/Login', [
-            'status' => session('status'),
+            'status'           => session('status'),
+            'canResetPassword' => true,
         ]);
     }
 

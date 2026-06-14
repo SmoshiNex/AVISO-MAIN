@@ -15,16 +15,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         User::factory()->create([
-            'first_name' => 'Super',
-            'last_name' => 'Admin',
-            'username' => 'superadmin',
-            'email' => 'admin@aviso.com',
-            'contact_number' => '1234567890',
-            'address' => 'Admin HQ',
-            'password' => bcrypt('password'),
+            'first_name'     => 'Albriane Jay',
+            'last_name'      => 'Usman',
+            'username'       => 'admin',
+            'email'          => 'usman.albrianejay@gmail.com',
+            'contact_number' => '+639774244540',
+            'address'        => 'P-7, ARCILLAS COMPOUND, ZAMBOANGA CITY',
+            'password'       => bcrypt('password'),
+            'role'           => 'admin',
+        ]);
+
+        $this->call([
+            RiderSeeder::class,
+            HazardLogSeeder::class,
         ]);
     }
 }
