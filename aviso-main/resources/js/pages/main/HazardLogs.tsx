@@ -5,6 +5,12 @@ import { Download } from 'lucide-react';
 import { HazardStats } from './components/hazards/HazardStats';
 import { HazardTable } from './components/hazards/HazardTable';
 import { type HazardLog, type PaginatedData } from '@/types/models';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Stats matches the key/value counts passed from the controller
 interface StatsData {
@@ -28,10 +34,10 @@ interface PageProps {
 export default function HazardLogs({ hazards, stats, areaCounts, filters, types, areas }: PageProps) {
     const totalHazards = hazards.total;
 
-    const exportCsv = () => {
-        // Construct the current URL with filters, but add export=csv
+    const exportData = (format: 'csv' | 'pdf') => {
+        // Construct the current URL with filters, but add export=format
         const url = new URL(window.location.href);
-        url.searchParams.set('export', 'csv');
+        url.searchParams.set('export', format);
         window.location.href = url.toString();
     };
 
@@ -47,10 +53,22 @@ export default function HazardLogs({ hazards, stats, areaCounts, filters, types,
                         Historical and active detections from edge devices.
                     </p>
                 </div>
-                <Button variant="outline" onClick={exportCsv}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Export CSV
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            <Download className="w-4 h-4 mr-2" />
+                            Export Data
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => exportData('csv')} className="cursor-pointer">
+                            Export as CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportData('pdf')} className="cursor-pointer">
+                            Export as PDF
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             <HazardStats 

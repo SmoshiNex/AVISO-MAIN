@@ -8,24 +8,30 @@ use Illuminate\Support\Str;
 
 class HazardLogService
 {
+    private function applyFilters($query, array $filters)
+    {
+        if (!empty($filters['search'])) {
+            $query->search($filters['search']);
+        }
+
+        if (!empty($filters['type']) && $filters['type'] !== 'all') {
+            $query->byType($filters['type']);
+        }
+
+        if (!empty($filters['area']) && $filters['area'] !== 'all') {
+            $query->byArea($filters['area']);
+        }
+
+        return $query;
+    }
+
     /**
      * Get paginated and filtered hazard logs for the Admin Panel.
      */
     public function getPaginatedAdminLogs(array $filters): LengthAwarePaginator
     {
         $query = HazardLog::query();
-
-        if (!empty($filters['search'])) {
-            $query->search($filters['search']);
-        }
-
-        if (!empty($filters['type'])) {
-            $query->byType($filters['type']);
-        }
-
-        if (!empty($filters['area'])) {
-            $query->byArea($filters['area']);
-        }
+        $this->applyFilters($query, $filters);
 
 
 
@@ -47,15 +53,40 @@ class HazardLogService
     }
 
     /**
+     * Get unpaginated and filtered hazard logs for Exporting.
+     */
+    public function getExportLogs(array $filters)
+    {
+        $query = HazardLog::query();
+        $this->applyFilters($query, $filters);
+
+        $sort = $filters['sort'] ?? '-detected_at';
+        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
+        $column    = ltrim($sort, '-');
+
+        $allowedSorts = ['haz_code', 'type', 'area', 'confidence', 'distance', 'detected_at', 'status'];
+        if (in_array($column, $allowedSorts)) {
+            $query->orderBy($column, $direction);
+        } else {
+            $query->orderBy('detected_at', 'desc');
+        }
+
+        return $query->get();
+    }
+
+    /**
      * Get summary statistics for the Admin Panel hazard logs header.
      */
-    public function getAdminStats(): array
+    public function getAdminStats(array $filters = []): array
     {
-        $stats = HazardLog::selectRaw('type, count(*) as total')
+        $query = HazardLog::query();
+        $this->applyFilters($query, $filters);
+
+        $stats = (clone $query)->selectRaw('type, count(*) as total')
             ->groupBy('type')
             ->pluck('total', 'type');
 
-        $areaCounts = HazardLog::selectRaw('area, count(*) as total')
+        $areaCounts = (clone $query)->selectRaw('area, count(*) as total')
             ->groupBy('area')
             ->pluck('total', 'area');
 
