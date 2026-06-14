@@ -7,23 +7,28 @@ type LngLat = [number, number];
 type RiderDef = {
     id: string;
     name: string;
-    color: string;
-    // Waypoints for the Directions API request. Mapbox will return
-    // road-snapped geometry connecting these points in order.
-    // Picked from inside the City Proper hazard cluster
-    // (roughly 122.069-122.080, 6.901-6.910) where HAZ-001..015 sit,
-    // and which is also the area MapController centers the camera on.
+    colorBase: string; // Used to derive dynamic colors based on theme
     waypoints: LngLat[];
-    // Fallback straight-line route, used only if the Directions API
-    // request fails (bad token, offline, etc).
     fallbackRoute: LngLat[];
+    userInfo: {
+        fullName: string;
+        username: string;
+        contact: string;
+        address: string;
+    };
 };
 
 const RIDER_DEFS: RiderDef[] = [
     {
         id: "rider-1",
         name: "Rider 1 - San Jose Gusu",
-        color: "#3b82f6",
+        colorBase: "blue",
+        userInfo: {
+            fullName: "Maria Santos",
+            username: "rider_maria",
+            contact: "09171234002",
+            address: "Calarian, Zamboanga City"
+        },
         waypoints: [
             [122.04565, 6.93137], // HAZ-123
             [122.04691, 6.93008], // HAZ-122
@@ -46,57 +51,55 @@ const RIDER_DEFS: RiderDef[] = [
     },
     {
         id: "rider-2",
-        name: "Rider 2 - Tomas Claudio West Loop",
-        color: "#10b981",
-        // Covers the western arm along Tomas Claudio St.
-        // All lat > 6.906 — safely above the port/waterfront zone.
-        // Hazards passed: HAZ-007 (Pothole), HAZ-011 (Road Excavation),
-        //                 HAZ-013 (Pothole), HAZ-005 (Traffic Sign)
+        name: "Rider 2 - Pasonanca Road",
+        colorBase: "green",
+        userInfo: {
+            fullName: "Pedro Reyes",
+            username: "rider_pedro",
+            contact: "09171234003",
+            address: "San Roque, Zamboanga City"
+        },
         waypoints: [
-            [122.0750060, 6.9062739], // Tomas Claudio / Climaco junction (GeoJSON)
-            [122.0742734, 6.9060994], // Tomas Claudio mid (GeoJSON)
-            [122.07194,   6.90701],   // HAZ-003 Road Barrier
-            [122.06934,   6.90620],   // HAZ-011 Road Excavation
-            [122.06905,   6.90981],   // HAZ-005 Traffic Sign
-            [122.07087,   6.90849],   // HAZ-010 Pothole
+            [122.07278, 6.96092], // HAZ-067 (Carmen Valley area)
+            [122.07248, 6.96029], // HAZ-066
+            [122.07143, 6.95321], // HAZ-073
+            [122.07176, 6.95118], // HAZ-068
+            [122.07303, 6.94563], // HAZ-069
+            [122.07148, 6.94142], // San Roque (End route)
         ],
         fallbackRoute: [
-            [122.0750060, 6.9062739],
-            [122.0742734, 6.9060994],
-            [122.0736769, 6.9060970],
-            [122.0733020, 6.9061001],
-            [122.0717179, 6.9061466],
-            [122.0733020, 6.9061001],
-            [122.0750060, 6.9062739],
+            [122.07278, 6.96092],
+            [122.07248, 6.96029],
+            [122.07143, 6.95321],
+            [122.07176, 6.95118],
+            [122.07303, 6.94563],
+            [122.07148, 6.94142],
+            [122.07303, 6.94563],
+            [122.07176, 6.95118],
+            [122.07143, 6.95321],
+            [122.07248, 6.96029],
+            [122.07278, 6.96092],
         ],
     },
     {
         id: "rider-3",
-        name: "Rider 3 - Veterans Ave / Evangelista",
-        color: "#f59e0b",
-        // Covers the eastern corridor along Veterans Ave (secondary) and
-        // Evangelista St, far from Riders 1 & 2 to avoid icon overlap.
-        // All lat > 6.907 — safely above the port/waterfront zone.
-        // Hazards passed: HAZ-014 (Road Barrier), HAZ-006 (Traffic Light),
-        //                 HAZ-010 (Pothole)
+        name: "Rider 3 - Putik to Tugbungan",
+        colorBase: "orange",
+        userInfo: {
+            fullName: "Ana Gomez",
+            username: "rider_ana",
+            contact: "09171234004",
+            address: "Tugbungan, Zamboanga City"
+        },
         waypoints: [
-            [122.0802322, 6.9075767], // Veterans / Tomas Claudio junction (GeoJSON)
-            [122.0807387, 6.9077341], // Evangelista St west node (GeoJSON)
-            [122.0818640, 6.9080712], // Evangelista St east node (GeoJSON)
-            [122.07788,   6.90729],   // HAZ-014 Road Barrier
-            [122.07397,   6.90728],   // HAZ-006 Traffic Light
-            [122.07087,   6.90849],   // HAZ-010 Pothole
+            [122.100390, 6.946790], // Putik
+            [122.079750, 6.922120], // Tugbungan
+            [122.100390, 6.946790], // Loop back to Putik
         ],
         fallbackRoute: [
-            [122.0802322, 6.9075767],
-            [122.0807387, 6.9077341],
-            [122.0818640, 6.9080712],
-            [122.0807387, 6.9077341],
-            [122.0802322, 6.9075767],
-            [122.0801636, 6.9080762],
-            [122.0794638, 6.9078395],
-            [122.0801636, 6.9080762],
-            [122.0802322, 6.9075767],
+            [122.100390, 6.946790],
+            [122.079750, 6.922120],
+            [122.100390, 6.946790],
         ],
     },
 ];
@@ -104,9 +107,32 @@ const RIDER_DEFS: RiderDef[] = [
 type Rider = {
     id: string;
     name: string;
-    color: string;
+    colorBase: string;
     route: LngLat[];
+    userInfo: RiderDef["userInfo"];
 };
+
+// Map colorBase + theme to an actual hex color
+function getRiderThemeColor(base: string, theme: 'day' | 'night' | 'dusk' | 'dawn'): string {
+    if (theme === 'night') {
+        if (base === 'blue') return '#00f0ff'; // neon cyan
+        if (base === 'green') return '#39ff14'; // neon green
+        if (base === 'orange') return '#ff9900'; // neon orange
+    } else if (theme === 'dusk') {
+        if (base === 'blue') return '#4c1d95'; // deep violet
+        if (base === 'green') return '#15803d'; // forest green
+        if (base === 'orange') return '#c2410c'; // rust orange
+    } else if (theme === 'dawn') {
+        if (base === 'blue') return '#818cf8'; // indigo
+        if (base === 'green') return '#86efac'; // mint green
+        if (base === 'orange') return '#fdba74'; // soft orange
+    }
+    // Day (default)
+    if (base === 'blue') return '#3b82f6';
+    if (base === 'green') return '#10b981';
+    if (base === 'orange') return '#f59e0b';
+    return '#3b82f6';
+}
 
 function interpolate(p1: LngLat, p2: LngLat, t: number): LngLat {
     return [p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t];
@@ -220,13 +246,14 @@ function createMarkerElement(
     return wrapper;
 }
 
-export function LiveRiders() {
+export function LiveRiders({ theme = 'day' }: { theme?: 'day' | 'night' | 'dusk' | 'dawn' }) {
     const { map, isLoaded } = useMap();
     const [followingRider, setFollowingRider] = useState<string | null>(null);
     const followingRiderRef = useRef<string | null>(null);
     const animationRef = useRef<number | null>(null);
     const startTimeRef = useRef<number>(Date.now());
     const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
+    const wrapperRefs = useRef<Record<string, HTMLDivElement>>({});
     const [riders, setRiders] = useState<Rider[] | null>(null);
 
     // Keep ref in sync so the animation loop (set up once) can read
@@ -251,7 +278,8 @@ export function LiveRiders() {
                     return {
                         id: def.id,
                         name: def.name,
-                        color: def.color,
+                        colorBase: def.colorBase,
+                        userInfo: def.userInfo,
                         route:
                             roadRoute && roadRoute.length > 1
                                 ? roadRoute
@@ -284,76 +312,92 @@ export function LiveRiders() {
         }
 
         // Route lines
-        try {
-            riders.forEach((rider) => {
-                const sourceId = `route-${rider.id}`;
-                const layerId = `route-line-${rider.id}`;
-
-                if (!map.getSource(sourceId)) {
-                    map.addSource(sourceId, {
-                        type: "geojson",
-                        data: {
-                            type: "Feature",
-                            properties: {},
-                            geometry: {
-                                type: "LineString",
-                                coordinates: rider.route,
-                            },
-                        },
-                    });
-
-                    map.addLayer({
-                        id: `${layerId}-outline`,
-                        type: "line",
-                        source: sourceId,
-                        layout: { "line-join": "round", "line-cap": "round" },
-                        paint: {
-                            "line-color": rider.color,
-                            "line-width": 8,
-                            "line-opacity": 0.3,
-                            "line-blur": 2,
-                        },
-                    });
-
-                    map.addLayer({
-                        id: layerId,
-                        type: "line",
-                        source: sourceId,
-                        layout: { "line-join": "round", "line-cap": "round" },
-                        paint: {
-                            "line-color": rider.color,
-                            "line-width": 5,
-                            "line-opacity": 0.8,
-                        },
-                    });
-                }
-            });
-        } catch (e) {
-            // Map style might be already destroyed
-        }
-
-        // Markers — created once.
-        // rotationAlignment/pitchAlignment: 'map' makes the marker behave
-        // like a ground-level object: it tilts and rotates together with
-        // the map (instead of always facing the screen), so it visually
-        // tracks the route line in both 2D and 3D.
+        // Update layers and markers colors when theme changes
         riders.forEach((rider) => {
-            const el = createMarkerElement(rider.color, () => {
-                setFollowingRider((prev) =>
-                    prev === rider.id ? null : rider.id,
-                );
-            });
+            const hexColor = getRiderThemeColor(rider.colorBase, theme);
+            const sourceId = `route-${rider.id}`;
+            const layerId = `route-line-${rider.id}`;
 
-            const marker = new mapboxgl.Marker({
-                element: el,
-                anchor: "center",
-                pitchAlignment: "viewport",
-                rotationAlignment: "map"
-            })
-                .setLngLat(rider.route[0])
-                .addTo(map);
+            if (!map.getSource(sourceId)) {
+                map.addSource(sourceId, {
+                    type: "geojson",
+                    data: {
+                        type: "Feature",
+                        properties: {},
+                        geometry: {
+                            type: "LineString",
+                            coordinates: rider.route,
+                        },
+                    },
+                });
 
-            markersRef.current[rider.id] = marker;
+                map.addLayer({
+                    id: `${layerId}-outline`,
+                    type: "line",
+                    source: sourceId,
+                    layout: { "line-join": "round", "line-cap": "round" },
+                    paint: {
+                        "line-color": hexColor,
+                        "line-width": 8,
+                        "line-opacity": 0.3,
+                        "line-blur": 2,
+                    },
+                });
+
+                map.addLayer({
+                    id: layerId,
+                    type: "line",
+                    source: sourceId,
+                    layout: { "line-join": "round", "line-cap": "round" },
+                    paint: {
+                        "line-color": hexColor,
+                        "line-width": 5,
+                        "line-opacity": 0.8,
+                    },
+                });
+            } else {
+                // Update existing layers
+                if (map.getLayer(`${layerId}-outline`)) {
+                    map.setPaintProperty(`${layerId}-outline`, 'line-color', hexColor);
+                }
+                if (map.getLayer(layerId)) {
+                    map.setPaintProperty(layerId, 'line-color', hexColor);
+                }
+            }
+
+            // Create or update markers
+            if (!markersRef.current[rider.id]) {
+                const el = createMarkerElement(hexColor, () => {
+                    setFollowingRider((prev) =>
+                        prev === rider.id ? null : rider.id,
+                    );
+                });
+                wrapperRefs.current[rider.id] = el;
+
+                const marker = new mapboxgl.Marker({
+                    element: el,
+                    anchor: "center",
+                    pitchAlignment: "viewport",
+                    rotationAlignment: "map"
+                })
+                    .setLngLat(rider.route[0])
+                    .addTo(map);
+
+                markersRef.current[rider.id] = marker;
+            } else {
+                // Update SVG color inline for existing marker
+                const wrapper = wrapperRefs.current[rider.id];
+                if (wrapper) {
+                    const ring = wrapper.firstElementChild as HTMLElement;
+                    if (ring) ring.style.background = hexColor;
+                    
+                    const svg = wrapper.querySelector('svg');
+                    if (svg) {
+                        const circle = svg.querySelector('circle');
+                        if (circle) circle.setAttribute('fill', hexColor);
+                    }
+                }
+            }
         });
 
         startTimeRef.current = Date.now();
@@ -414,7 +458,7 @@ export function LiveRiders() {
                     marker.setRotation(bearing);
                 }
 
-                // Camera follow — read from ref, not state, so no re-render needed
+                // Camera follow and live info update — read from ref, not state, so no re-render needed
                 if (followingRiderRef.current === rider.id) {
                     map.easeTo({
                         center: currentCoords,
@@ -423,6 +467,11 @@ export function LiveRiders() {
                         pitch: 50,
                         duration: 100,
                     });
+
+                    const coordsEl = document.getElementById('live-rider-coords');
+                    if (coordsEl) {
+                        coordsEl.textContent = `${currentCoords[1].toFixed(6)}, ${currentCoords[0].toFixed(6)}`;
+                    }
                 }
             });
 
@@ -459,9 +508,64 @@ export function LiveRiders() {
         // Note: deliberately NOT depending on followingRider —
         // that's read via followingRiderRef instead, so the
         // markers/animation are only ever set up once per `riders` value.
-    }, [isLoaded, map, riders]);
+        // Theme is included in dependency array so colors update without restarting animation
+    }, [isLoaded, map, riders, theme]);
 
-    // No DOM to render from React's side — everything is
-    // imperatively attached to the Mapbox markers above.
-    return null;
+    const activeRider = riders?.find(r => r.id === followingRider);
+
+    return (
+        <>
+            {activeRider && (
+                <div className="absolute bottom-8 left-3 z-10 bg-background/95 backdrop-blur shadow-xl border rounded-xl p-4 w-72 transition-all">
+                    <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                            <div 
+                                className="w-3 h-3 rounded-full animate-pulse shadow-sm" 
+                                style={{ backgroundColor: getRiderThemeColor(activeRider.colorBase, theme) }} 
+                            />
+                            <h3 className="font-bold text-sm tracking-tight">{activeRider.name}</h3>
+                        </div>
+                        <button 
+                            onClick={() => setFollowingRider(null)}
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted p-1 rounded-md transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                        <div className="flex justify-between items-center pb-2 border-b">
+                            <span className="font-medium text-foreground">Status:</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-600 border border-green-500/30">
+                                Active Patrol
+                            </span>
+                        </div>
+                        <div className="pt-1">
+                            <strong className="text-foreground block text-xs uppercase tracking-wider mb-1">Assigned User</strong>
+                            <p className="flex justify-between mb-0.5">
+                                <span>Name:</span> <span className="font-medium text-foreground">{activeRider.userInfo.fullName}</span>
+                            </p>
+                            <p className="flex justify-between mb-0.5">
+                                <span>Username:</span> <span className="font-mono text-xs">{activeRider.userInfo.username}</span>
+                            </p>
+                            <p className="flex justify-between mb-0.5">
+                                <span>Contact:</span> <span>{activeRider.userInfo.contact}</span>
+                            </p>
+                            <p className="flex justify-between">
+                                <span>Address:</span> <span className="truncate max-w-[120px]" title={activeRider.userInfo.address}>{activeRider.userInfo.address}</span>
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                                <p className="flex justify-between items-center">
+                                    <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Live GPS:</span> 
+                                    <span id="live-rider-coords" className="font-mono text-[10px] font-bold tracking-tight text-foreground bg-muted px-1.5 py-0.5 rounded">
+                                        Loading...
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }

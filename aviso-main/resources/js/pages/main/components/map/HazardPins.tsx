@@ -4,7 +4,12 @@ import { getHazardColor } from '@/lib/hazards';
 import { type HazardLog } from '@/types/models';
 import useSupercluster from 'use-supercluster';
 
-export function HazardPins({ hazards = [] }: { hazards?: HazardLog[] }) {
+interface HazardPinsProps {
+    hazards?: HazardLog[];
+    theme?: 'day' | 'night' | 'dusk' | 'dawn';
+}
+
+export function HazardPins({ hazards = [], theme = 'day' }: HazardPinsProps) {
     const { map } = useMap();
     const [bounds, setBounds] = useState<any>(null);
     const [zoom, setZoom] = useState(14);
@@ -112,7 +117,7 @@ export function HazardPins({ hazards = [] }: { hazards?: HazardLog[] }) {
                     <MapMarker key={hazardId} longitude={longitude} latitude={latitude}>
                         <MarkerContent>
                             <div 
-                                style={{ backgroundColor: getHazardColor(hazardType as any) }} 
+                                style={{ backgroundColor: getHazardColor(hazardType as any, theme) }} 
                                 className="w-4 h-4 rounded-full border-[3px] border-white shadow-md hover:scale-125 transition-transform"
                                 title={hazardType as string}
                             />
@@ -120,7 +125,7 @@ export function HazardPins({ hazards = [] }: { hazards?: HazardLog[] }) {
                         <MarkerPopup closeButton className="w-64 z-50 rounded-xl overflow-hidden p-0">
                             <div className="p-4 text-sm bg-background">
                                 <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: getHazardColor(hazardType as any) }} />
+                                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: getHazardColor(hazardType as any, theme) }} />
                                     <span className="font-bold text-base">{hazardType}</span>
                                 </div>
                                 <div className="space-y-2 text-muted-foreground">
@@ -145,7 +150,7 @@ export function HazardPins({ hazards = [] }: { hazards?: HazardLog[] }) {
                         {viewportStats.map(([type, count]) => (
                             <div key={type} className="flex justify-between items-center">
                                 <div className="flex items-center gap-2 text-sm font-medium">
-                                    <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: getHazardColor(type as any) }} />
+                                    <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: getHazardColor(type as any, theme) }} />
                                     {type}
                                 </div>
                                 <span className="font-mono text-sm font-bold bg-muted/50 border px-2 py-0.5 rounded-md">{count}</span>

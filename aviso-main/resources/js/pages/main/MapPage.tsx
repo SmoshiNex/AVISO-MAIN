@@ -50,7 +50,7 @@ const HAZARD_STATS: {
         type: 'Traffic Light',
         label: 'Traffic Lights',
         icon: <StopCircle className="w-5 h-5" />,
-        description: 'Faulty signals',
+        description: 'Detected locations',
     },
 ];
 
@@ -78,6 +78,9 @@ function RealTimeClock() {
 
 export default function MapPage({ hazards }: MapPageProps) {
     const [isLoading, setIsLoading] = useState(true);
+
+    // Map theme preset
+    const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>('day');
 
     // State for filtering pins on the map
     const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -165,9 +168,11 @@ export default function MapPage({ hazards }: MapPageProps) {
                                 activeFilters={activeFilters}
                                 setActiveFilters={setActiveFilters}
                                 availableTypes={availableTypes}
+                                lightPreset={lightPreset}
+                                setLightPreset={setLightPreset}
                             />
-                            <HazardPins hazards={filteredHazards} />
-                            <LiveRiders />
+                            <HazardPins hazards={filteredHazards} theme={lightPreset} />
+                            <LiveRiders theme={lightPreset} />
                             <SearchBox />
                             <MapControls position="top-right" showZoom showCompass />
                         </Map>

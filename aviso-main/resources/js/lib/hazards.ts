@@ -1,19 +1,42 @@
-// Helper to consistently assign colors to hazard types
-export function getHazardColor(type: string): string {
-    switch (type) {
-        case "Pothole":
-            return "#ef4444"; // red-500
-        case "Road Excavation":
-            return "#f97316"; // orange-500
-        case "Road Barrier":
-            return "#eab308"; // yellow-500
-        case "Traffic Sign":
-            return "#3b82f6"; // blue-500
-        case "Traffic Light":
-            return "#22c55e"; // green-500
-        default:
-            return "#64748b"; // slate-500
-    }
+// Helper to consistently assign colors to hazard types based on map theme
+export function getHazardColor(type: string, theme: 'day' | 'night' | 'dusk' | 'dawn' = 'day'): string {
+    const palettes = {
+        day: {
+            "Pothole": "#ef4444", // red-500
+            "Road Excavation": "#f97316", // orange-500
+            "Road Barrier": "#eab308", // yellow-500
+            "Traffic Sign": "#3b82f6", // blue-500
+            "Traffic Light": "#22c55e", // green-500
+            "default": "#64748b" // slate-500
+        },
+        night: {
+            "Pothole": "#ff0055", // neon pink
+            "Road Excavation": "#ff9900", // neon orange
+            "Road Barrier": "#fcd34d", // bright yellow
+            "Traffic Sign": "#00f0ff", // cyan
+            "Traffic Light": "#39ff14", // neon green
+            "default": "#94a3b8"
+        },
+        dusk: {
+            "Pothole": "#9f1239", // deep crimson
+            "Road Excavation": "#c2410c", // rust orange
+            "Road Barrier": "#b45309", // amber brown
+            "Traffic Sign": "#4c1d95", // deep violet
+            "Traffic Light": "#15803d", // forest green
+            "default": "#475569"
+        },
+        dawn: {
+            "Pothole": "#fca5a5", // soft peach/red
+            "Road Excavation": "#fdba74", // soft orange
+            "Road Barrier": "#fde047", // soft yellow
+            "Traffic Sign": "#a78bfa", // lavender
+            "Traffic Light": "#86efac", // mint green
+            "default": "#cbd5e1"
+        }
+    };
+
+    const palette = palettes[theme] || palettes.day;
+    return palette[type as keyof typeof palette] || palette.default;
 }
 
 // Helper to consistently assign Tailwind classes to hazard types
