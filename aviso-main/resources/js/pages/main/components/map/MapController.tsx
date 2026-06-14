@@ -1,8 +1,14 @@
 import { useMap } from '@/components/ui/map';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Mountain, RefreshCw, Layers, Sun, Moon, Sunset, Sunrise, Car } from 'lucide-react';
+import { RotateCcw, Mountain, RefreshCw, Layers, Sun, Moon, Sunset, Sunrise, Car, Filter } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { type HazardLog } from '@/types/models';
 
 // Shifted camera center slightly North so the riders load at the bottom of the screen
@@ -10,9 +16,17 @@ const ZAMBOANGA: [number, number] = [122.0739, 6.9350];
 
 interface MapControllerProps {
     hazards?: HazardLog[];
+    activeFilters?: string[];
+    setActiveFilters?: (filters: string[]) => void;
+    availableTypes?: string[];
 }
 
-export function MapController({ hazards = [] }: MapControllerProps) {
+export function MapController({ 
+    hazards = [], 
+    activeFilters = [], 
+    setActiveFilters, 
+    availableTypes = [] 
+}: MapControllerProps) {
     const { map, isLoaded } = useMap();
     const [pitch, setPitch]   = useState(0);
     const [bearing, setBearing] = useState(0);
@@ -173,10 +187,18 @@ export function MapController({ hazards = [] }: MapControllerProps) {
 
     // ── Buttons ──
     const handle3DView = () => {
-        if (!map || is3D) return;
-        setIs3D(true);
-        try { map.setConfigProperty('basemap', 'show3dObjects', true); } catch(e) {}
-        map.easeTo({ pitch: 60, bearing: -20, duration: 1200 });
+        if (!map) return;
+        
+        if (is3D) {
+            stopRotation();
+            setIs3D(false);
+            try { map.setConfigProperty('basemap', 'show3dObjects', false); } catch(e) {}
+            map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+        } else {
+            setIs3D(true);
+            try { map.setConfigProperty('basemap', 'show3dObjects', true); } catch(e) {}
+            map.easeTo({ pitch: 60, bearing: -20, duration: 1200 });
+        }
     };
 
     const handleReset = () => {
@@ -227,6 +249,37 @@ export function MapController({ hazards = [] }: MapControllerProps) {
                     <Car className="mr-1.5 h-4 w-4" />
                     Traffic
                 </Button>
+
+                <div className="w-px h-5 bg-border mx-1" />
+
+                {/* Filter Hazards Dropdown */}
+                {setActiveFilters && availableTypes.length > 0 && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant={activeFilters.length < availableTypes.length ? "default" : "ghost"}>
+                                <Filter className="mr-1.5 h-4 w-4" />
+                                Filters
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            {availableTypes.map(type => (
+                                <DropdownMenuCheckboxItem
+                                    key={type}
+                                    checked={activeFilters.includes(type)}
+                                    onCheckedChange={(checked) => {
+                                        if (checked) {
+                                            setActiveFilters([...activeFilters, type]);
+                                        } else {
+                                            setActiveFilters(activeFilters.filter(f => f !== type));
+                                        }
+                                    }}
+                                >
+                                    {type}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
 
                 <div className="w-px h-5 bg-border mx-1" />
 

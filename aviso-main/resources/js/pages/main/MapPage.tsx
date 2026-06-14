@@ -79,6 +79,22 @@ function RealTimeClock() {
 export default function MapPage({ hazards }: MapPageProps) {
     const [isLoading, setIsLoading] = useState(true);
 
+    // State for filtering pins on the map
+    const [activeFilters, setActiveFilters] = useState<string[]>([]);
+    
+    // Initialize active filters once with all available types
+    useEffect(() => {
+        const types = Array.from(new Set(hazards.map(h => h.type)));
+        setActiveFilters(types);
+    }, [hazards]);
+
+    const filteredHazards = useMemo(() => {
+        return hazards.filter(h => activeFilters.includes(h.type));
+    }, [hazards, activeFilters]);
+
+    // Distinct types available for the dropdown toggle
+    const availableTypes = useMemo(() => Array.from(new Set(hazards.map(h => h.type))), [hazards]);
+
     useEffect(() => {
         const timer = setTimeout(() => setIsLoading(false), 1500);
         return () => clearTimeout(timer);
@@ -144,8 +160,13 @@ export default function MapPage({ hazards }: MapPageProps) {
                             styles={{ light: STYLE_STANDARD, dark: STYLE_STANDARD }}
                             className="w-full h-full relative"
                         >
-                            <MapController hazards={hazards} />
-                            <HazardPins hazards={hazards} />
+                            <MapController 
+                                hazards={filteredHazards} 
+                                activeFilters={activeFilters}
+                                setActiveFilters={setActiveFilters}
+                                availableTypes={availableTypes}
+                            />
+                            <HazardPins hazards={filteredHazards} />
                             <LiveRiders />
                             <SearchBox />
                             <MapControls position="top-right" showZoom showCompass />

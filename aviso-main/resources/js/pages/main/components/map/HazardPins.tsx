@@ -50,12 +50,62 @@ export function HazardPins({ hazards = [] }: { hazards?: HazardLog[] }) {
         }));
     }, [hazards]);
 
-    // Disabled clustering entirely as requested by user
+    const { clusters, supercluster } = useSupercluster({
+        points,
+        bounds,
+        zoom,
+        options: { radius: 75, maxZoom: 20 }
+    });
+
+    const viewportStats = useMemo(() => {
+        if (!bounds) return [];
+        const [w, s, e, n] = bounds;
+        
+        const counts: Record<string, number> = {};
+        let total = 0;
+
+        points.forEach(p => {
+            const [lng, lat] = p.geometry.coordinates;
+            if (lng >= w && lng <= e && lat >= s && lat <= n) {
+                const type = p.properties.hazardType;
+                counts[type] = (counts[type] || 0) + 1;
+                total++;
+            }
+        });
+
+        if (total === 0) return [];
+        return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    }, [points, bounds]);
+
     return (
         <>
-            {points.map(point => {
-                const [longitude, latitude] = point.geometry.coordinates;
-                const { hazardId, hazardType, timestamp, confidence, distance, riderId, area } = point.properties;
+            {clusters.map(cluster => {
+                const [longitude, latitude] = cluster.geometry.coordinates;
+                const properties = cluster.properties as any;
+                const { cluster: isCluster, point_count: pointCount, hazardId, hazardType, timestamp, confidence, distance, riderId, area } = properties;
+
+                if (isCluster) {
+                    return (
+                        <MapMarker 
+                            key={`cluster-${cluster.id}`} 
+                            longitude={longitude} 
+                            latitude={latitude}
+                            onClick={() => {
+                                if (supercluster && cluster.id) {
+                                    const expansionZoom = Math.min(
+                                        supercluster.getClusterExpansionZoom(cluster.id as number), 
+                                        20
+                                    );
+                                    map?.flyTo({ center: [longitude, latitude], zoom: expansionZoom });
+                                }
+                            }}
+                        >
+                            <div className="w-10 h-10 bg-primary/90 text-primary-foreground border-4 border-background rounded-full flex items-center justify-center font-bold text-sm shadow-xl shadow-primary/30 cursor-pointer hover:scale-110 transition-transform duration-200">
+                                {pointCount}
+                            </div>
+                        </MapMarker>
+                    );
+                }
 
                 // Render individual hazard marker
                 return (
@@ -86,6 +136,24 @@ export function HazardPins({ hazards = [] }: { hazards?: HazardLog[] }) {
                     </MapMarker>
                 );
             })}
+
+            {/* Viewport Statistics Panel */}
+            {viewportStats.length > 0 && (
+                <div className="absolute bottom-8 right-14 z-10 bg-background/95 backdrop-blur shadow-lg border rounded-xl p-4 w-60">
+                    <h3 className="font-heading font-bold text-xs mb-3 text-muted-foreground uppercase tracking-wider">Visible on screen</h3>
+                    <div className="space-y-2.5">
+                        {viewportStats.map(([type, count]) => (
+                            <div key={type} className="flex justify-between items-center">
+                                <div className="flex items-center gap-2 text-sm font-medium">
+                                    <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: getHazardColor(type as any) }} />
+                                    {type}
+                                </div>
+                                <span className="font-mono text-sm font-bold bg-muted/50 border px-2 py-0.5 rounded-md">{count}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </>
     );
 }
