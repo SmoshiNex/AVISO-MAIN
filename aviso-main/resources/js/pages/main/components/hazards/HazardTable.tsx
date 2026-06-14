@@ -168,19 +168,7 @@ export function HazardTable({
                         </SelectContent>
                     </Select>
 
-                    <Select
-                        value={filters.status || "all"}
-                        onValueChange={(v) => handleFilterChange("status", v)}
-                    >
-                        <SelectTrigger className="w-[130px] bg-background">
-                            <SelectValue placeholder="All Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="resolved">Resolved</SelectItem>
-                        </SelectContent>
-                    </Select>
+
                 </div>
             </div>
 
@@ -210,16 +198,14 @@ export function HazardTable({
                             <TableHead className="font-semibold">
                                 Detected At
                             </TableHead>
-                            <TableHead className="font-semibold text-right">
-                                Status
-                            </TableHead>
+
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {hazards.data.length === 0 ? (
                             <TableRow>
                                 <TableCell
-                                    colSpan={8}
+                                    colSpan={7}
                                     className="h-32 text-center text-muted-foreground"
                                 >
                                     No hazards found matching your filters.
@@ -273,22 +259,7 @@ export function HazardTable({
                                             minute: "2-digit",
                                         })}
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        <Badge
-                                            variant={
-                                                hazard.status === "active"
-                                                    ? "default"
-                                                    : "secondary"
-                                            }
-                                            className={
-                                                hazard.status === "active"
-                                                    ? "bg-red-500 hover:bg-red-600"
-                                                    : ""
-                                            }
-                                        >
-                                            {hazard.status}
-                                        </Badge>
-                                    </TableCell>
+
                                 </TableRow>
                             ))
                         )}

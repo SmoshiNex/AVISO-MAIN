@@ -21,7 +21,7 @@ export interface HazardLog {
     confidence: number;
     distance: number;
     rider_code: string;
-    status: 'active' | 'resolved' | string;
+    status: 'active' | string;
     detected_at: string;
 }
 
