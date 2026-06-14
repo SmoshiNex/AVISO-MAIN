@@ -27,9 +27,7 @@ class HazardLogService
             $query->byArea($filters['area']);
         }
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
+
 
         $sort = $filters['sort'] ?? '-detected_at';
         $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';

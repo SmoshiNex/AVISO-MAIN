@@ -24,7 +24,6 @@ class HazardLog extends Model
 
     // ── Status constants ──────────────────────────────────────────────────────
     const STATUS_ACTIVE   = 'active';
-    const STATUS_RESOLVED = 'resolved';
 
     // ── Area labels (match the groupings in mockHazards.ts) ──────────────────
     const AREAS = [
