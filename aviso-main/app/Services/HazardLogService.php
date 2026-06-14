@@ -77,7 +77,15 @@ class HazardLogService
             (float) $data['longitude']
         );
 
-        $data['haz_code']    = 'HAZ-' . strtoupper(Str::random(6));
+        $prefix = 'HAZ-';
+        if (isset($data['type'])) {
+            if ($data['type'] === 'Traffic Sign') {
+                $prefix = 'TS-';
+            } elseif ($data['type'] === 'Traffic Light') {
+                $prefix = 'TL-';
+            }
+        }
+        $data['haz_code']    = $prefix . strtoupper(Str::random(6));
         $data['status']      = HazardLog::STATUS_ACTIVE;
         $data['detected_at'] = $data['detected_at'] ?? now();
 
