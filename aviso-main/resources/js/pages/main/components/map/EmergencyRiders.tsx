@@ -34,6 +34,7 @@ function ensureSosKeyframes() {
 export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve }: EmergencyRidersProps) {
     const { map, isLoaded } = useMap();
     const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
+    const prevCountRef = useRef(0);
     const [activePanel, setActivePanel] = useState<string | null>(null);
 
     // Keep activePanel in sync: if an emergency is resolved while panel is open, close it
@@ -62,9 +63,6 @@ export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve
                     .addTo(map);
 
                 markersRef.current[emergency.id] = marker;
-
-                // Fly to the accident location when the emergency is first added
-                map.flyTo({ center: emergency.coords, zoom: 15, pitch: 45, duration: 1200 });
             }
         }
 
@@ -75,6 +73,17 @@ export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve
                 delete markersRef.current[id];
             }
         }
+
+        // Fit map to show all markers when the first batch arrives
+        if (emergencies.length > 0 && prevCountRef.current === 0) {
+            const lngs = emergencies.map(e => e.coords[0]);
+            const lats = emergencies.map(e => e.coords[1]);
+            map.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 100, duration: 1200, maxZoom: 15 }
+            );
+        }
+        prevCountRef.current = emergencies.length;
     }, [isLoaded, map, emergencies]);
 
     // Cleanup all markers on unmount

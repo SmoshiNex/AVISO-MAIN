@@ -2,7 +2,7 @@ import { Head } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Map, MapControls } from '@/components/ui/map';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Cone, Construction, MapPin, StopCircle } from 'lucide-react';
 
 // Subcomponents
@@ -12,7 +12,7 @@ import { MapController } from './components/map/MapController';
 import { EmergencyRiders } from './components/map/EmergencyRiders';
 import { getHazardColor, getHazardTailwindColors } from '@/lib/hazards';
 import { type HazardLog } from '@/types/models';
-import { RIDER_DEFS, type EmergencyAlert } from './components/map/riderData';
+import { RIDER_DEFS, type EmergencyAlert, type LngLat } from './components/map/riderData';
 import { findNearestHazard } from './components/map/riderUtils';
 
 const STYLE_STANDARD = 'mapbox://styles/mapbox/standard';
@@ -66,36 +66,39 @@ export default function MapPage({ hazards }: MapPageProps) {
     const filteredHazards = useMemo(() => hazards.filter(h => activeFilters.includes(h.type)), [hazards, activeFilters]);
     const availableTypes = useMemo(() => Array.from(new Set(hazards.map(h => h.type))), [hazards]);
 
-    // Emergency alert state
+    // Emergency alert state — auto-populated from hazard locations on first load
     const [activeEmergencies, setActiveEmergencies] = useState<EmergencyAlert[]>([]);
+    const initialized = useRef(false);
 
-    const handleSimulateEmergency = () => {
-        const usedIds = activeEmergencies.map(e => e.riderId);
-        const available = RIDER_DEFS.filter(def => !usedIds.includes(def.id));
-        if (!available.length) return;
+    useEffect(() => {
+        if (initialized.current || !hazards.length) return;
+        initialized.current = true;
 
-        const def = available[0];
-        const accidentWaypoint = def.waypoints[Math.floor(def.waypoints.length / 2)];
+        const count = Math.floor(Math.random() * 8) + 3; // 3–10
+        const shuffledHazards = [...hazards].sort(() => Math.random() - 0.5).slice(0, count);
+        const shuffledRiders = [...RIDER_DEFS].sort(() => Math.random() - 0.5).slice(0, count);
 
-        const emergency: EmergencyAlert = {
-            id: Date.now().toString(),
-            riderId: def.id,
-            riderName: def.name,
-            colorBase: def.colorBase,
-            coords: accidentWaypoint,
-            userInfo: def.userInfo,
-            triggeredAt: new Date().toISOString(),
-            nearestHazard: findNearestHazard(accidentWaypoint, hazards),
-        };
-
-        setActiveEmergencies(prev => [...prev, emergency]);
-    };
+        setActiveEmergencies(
+            shuffledHazards.map((hazard, i) => {
+                const def = shuffledRiders[i];
+                const coords: LngLat = [hazard.longitude, hazard.latitude];
+                return {
+                    id: `${Date.now()}-${i}`,
+                    riderId: def.id,
+                    riderName: def.name,
+                    colorBase: def.colorBase,
+                    coords,
+                    userInfo: def.userInfo,
+                    triggeredAt: new Date().toISOString(),
+                    nearestHazard: findNearestHazard(coords, hazards),
+                };
+            })
+        );
+    }, [hazards]);
 
     const handleResolveEmergency = (id: string) => {
         setActiveEmergencies(prev => prev.filter(e => e.id !== id));
     };
-
-    const hasAvailableRiders = activeEmergencies.length < RIDER_DEFS.length;
 
     return (
         <AdminLayout>
@@ -151,8 +154,6 @@ export default function MapPage({ hazards }: MapPageProps) {
                             availableTypes={availableTypes}
                             lightPreset={lightPreset}
                             setLightPreset={setLightPreset}
-                            onSimulateEmergency={handleSimulateEmergency}
-                            hasAvailableRiders={hasAvailableRiders}
                         />
                         <HazardPins hazards={filteredHazards} theme={lightPreset} />
                         <EmergencyRiders

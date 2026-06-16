@@ -11,7 +11,6 @@ import {
     Sunrise,
     Car,
     Filter,
-    Siren,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -33,8 +32,6 @@ interface MapControllerProps {
     availableTypes?: string[];
     lightPreset?: "day" | "night" | "dusk" | "dawn";
     setLightPreset?: (preset: "day" | "night" | "dusk" | "dawn") => void;
-    onSimulateEmergency?: () => void;
-    hasAvailableRiders?: boolean;
 }
 
 export function MapController({
@@ -44,8 +41,6 @@ export function MapController({
     availableTypes = [],
     lightPreset = "day",
     setLightPreset,
-    onSimulateEmergency,
-    hasAvailableRiders = true,
 }: MapControllerProps) {
     const { map, isLoaded } = useMap();
     const [pitch, setPitch] = useState(0);
@@ -434,23 +429,6 @@ export function MapController({
                     <Car className="mr-1.5 h-4 w-4" />
                     Traffic
                 </Button>
-
-                <div className="w-px h-5 bg-border mx-1" />
-
-                {/* Simulate SOS Emergency */}
-                {onSimulateEmergency && (
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={onSimulateEmergency}
-                        disabled={!hasAvailableRiders}
-                        className="text-destructive hover:text-white hover:bg-destructive disabled:opacity-40"
-                        title={hasAvailableRiders ? "Simulate an emergency alert for a rider" : "All riders already have active emergencies"}
-                    >
-                        <Siren className="mr-1.5 h-4 w-4" />
-                        Simulate SOS
-                    </Button>
-                )}
 
                 <div className="w-px h-5 bg-border mx-1" />
 

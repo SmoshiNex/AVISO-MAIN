@@ -6,22 +6,12 @@ export type RiderDef = {
     id: string;
     name: string;
     colorBase: string;
-    waypoints: LngLat[];
-    fallbackRoute: LngLat[];
     userInfo: {
         fullName: string;
         username: string;
         contact: string;
         address: string;
     };
-};
-
-export type Rider = {
-    id: string;
-    name: string;
-    colorBase: string;
-    route: LngLat[];
-    userInfo: RiderDef['userInfo'];
 };
 
 export interface EmergencyAlert {
@@ -46,25 +36,6 @@ export const RIDER_DEFS: RiderDef[] = [
             contact: '09171234002',
             address: 'Calarian, Zamboanga City',
         },
-        waypoints: [
-            [122.04565, 6.93137],
-            [122.04691, 6.93008],
-            [122.04761, 6.92941],
-            [122.04718, 6.92781],
-            [122.05202, 6.92752],
-            [122.04707, 6.92311],
-            [122.04777, 6.92048],
-        ],
-        fallbackRoute: [
-            [122.04565, 6.93137],
-            [122.04691, 6.93008],
-            [122.04761, 6.92941],
-            [122.04718, 6.92781],
-            [122.05202, 6.92752],
-            [122.04707, 6.92311],
-            [122.04777, 6.92048],
-            [122.04565, 6.93137],
-        ],
     },
     {
         id: 'rider-2',
@@ -76,27 +47,6 @@ export const RIDER_DEFS: RiderDef[] = [
             contact: '09171234003',
             address: 'San Roque, Zamboanga City',
         },
-        waypoints: [
-            [122.07278, 6.96092],
-            [122.07248, 6.96029],
-            [122.07143, 6.95321],
-            [122.07176, 6.95118],
-            [122.07303, 6.94563],
-            [122.07148, 6.94142],
-        ],
-        fallbackRoute: [
-            [122.07278, 6.96092],
-            [122.07248, 6.96029],
-            [122.07143, 6.95321],
-            [122.07176, 6.95118],
-            [122.07303, 6.94563],
-            [122.07148, 6.94142],
-            [122.07303, 6.94563],
-            [122.07176, 6.95118],
-            [122.07143, 6.95321],
-            [122.07248, 6.96029],
-            [122.07278, 6.96092],
-        ],
     },
     {
         id: 'rider-3',
@@ -108,15 +58,82 @@ export const RIDER_DEFS: RiderDef[] = [
             contact: '09171234004',
             address: 'Tugbungan, Zamboanga City',
         },
-        waypoints: [
-            [122.100390, 6.946790],
-            [122.079750, 6.922120],
-            [122.100390, 6.946790],
-        ],
-        fallbackRoute: [
-            [122.100390, 6.946790],
-            [122.079750, 6.922120],
-            [122.100390, 6.946790],
-        ],
+    },
+    {
+        id: 'rider-4',
+        name: 'Rider 4 - Calarian',
+        colorBase: 'blue',
+        userInfo: {
+            fullName: 'Juan Cruz',
+            username: 'rider_juan',
+            contact: '09185001001',
+            address: 'Calarian, Zamboanga City',
+        },
+    },
+    {
+        id: 'rider-5',
+        name: 'Rider 5 - Sta Maria',
+        colorBase: 'green',
+        userInfo: {
+            fullName: 'Rosa Dela Cruz',
+            username: 'rider_rosa',
+            contact: '09185001002',
+            address: 'Sta. Maria, Zamboanga City',
+        },
+    },
+    {
+        id: 'rider-6',
+        name: 'Rider 6 - Lunzuran',
+        colorBase: 'orange',
+        userInfo: {
+            fullName: 'Carlo Bautista',
+            username: 'rider_carlo',
+            contact: '09185001003',
+            address: 'Lunzuran, Zamboanga City',
+        },
+    },
+    {
+        id: 'rider-7',
+        name: 'Rider 7 - Baliwasan',
+        colorBase: 'blue',
+        userInfo: {
+            fullName: 'Lisa Manalo',
+            username: 'rider_lisa',
+            contact: '09185001004',
+            address: 'Baliwasan, Zamboanga City',
+        },
+    },
+    {
+        id: 'rider-8',
+        name: 'Rider 8 - Tumaga',
+        colorBase: 'green',
+        userInfo: {
+            fullName: 'Marco Dela Vega',
+            username: 'rider_marco',
+            contact: '09185001005',
+            address: 'Tumaga, Zamboanga City',
+        },
+    },
+    {
+        id: 'rider-9',
+        name: 'Rider 9 - Talon-Talon',
+        colorBase: 'orange',
+        userInfo: {
+            fullName: 'Elena Fernandez',
+            username: 'rider_elena',
+            contact: '09185001006',
+            address: 'Talon-Talon, Zamboanga City',
+        },
+    },
+    {
+        id: 'rider-10',
+        name: 'Rider 10 - City Proper',
+        colorBase: 'blue',
+        userInfo: {
+            fullName: 'Jose Villanueva',
+            username: 'rider_jose',
+            contact: '09185001007',
+            address: 'City Proper, Zamboanga City',
+        },
     },
 ];
