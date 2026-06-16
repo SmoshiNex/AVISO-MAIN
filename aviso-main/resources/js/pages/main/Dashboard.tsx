@@ -1,8 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
-import { useEffect, useState } from 'react';
-import { Skeleton } from 'boneyard-js/react';
+import { HAZARD_CHART_COLORS } from '@/lib/hazards';
 import {
     ChartContainer,
     ChartTooltip,
@@ -14,26 +13,18 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAx
 import { ChartConfig } from '@/components/ui/chart';
 
 const hazardsChartConfig = {
-    potholes:           { label: 'Potholes',                color: 'oklch(0.577 0.245 27.325)'  },
-    roadExcavation:     { label: 'Road Excavation',         color: 'oklch(0.705 0.213 47.604)'  },
-    roadBarriers:       { label: 'Road Barriers',           color: 'oklch(0.795 0.184 86.047)'  },
-    trafficSigns:       { label: 'Traffic Signs',           color: 'oklch(0.600 0.180 240.000)' },
-    trafficLightRed:    { label: 'Traffic Light (Red)',     color: 'oklch(0.637 0.237 15.330)'  },
-    trafficLightGreen:  { label: 'Traffic Light (Green)',   color: 'oklch(0.627 0.194 149.214)' },
-    trafficLightOrange: { label: 'Traffic Light (Orange)',  color: 'oklch(0.750 0.183 55.934)'  },
+    potholes:           { label: 'Potholes',               color: HAZARD_CHART_COLORS.potholes           },
+    roadExcavation:     { label: 'Road Excavation',        color: HAZARD_CHART_COLORS.roadExcavation     },
+    roadBarriers:       { label: 'Road Barriers',          color: HAZARD_CHART_COLORS.roadBarriers       },
+    trafficSigns:       { label: 'Traffic Signs',          color: HAZARD_CHART_COLORS.trafficSigns       },
+    trafficLightRed:    { label: 'Traffic Light (Red)',    color: HAZARD_CHART_COLORS.trafficLightRed    },
+    trafficLightGreen:  { label: 'Traffic Light (Green)',  color: HAZARD_CHART_COLORS.trafficLightGreen  },
+    trafficLightOrange: { label: 'Traffic Light (Orange)', color: HAZARD_CHART_COLORS.trafficLightOrange },
 } satisfies ChartConfig;
 
 const hazardTypesChartConfig = hazardsChartConfig;
 
-const HAZARD_TYPE_COLORS = [
-    'oklch(0.577 0.245 27.325)',  // Potholes — deep red
-    'oklch(0.705 0.213 47.604)',  // Road Excavation — orange
-    'oklch(0.795 0.184 86.047)',  // Road Barriers — yellow
-    'oklch(0.600 0.180 240.000)', // Traffic Signs — blue
-    'oklch(0.637 0.237 15.330)',  // Traffic Light Red
-    'oklch(0.627 0.194 149.214)', // Traffic Light Green
-    'oklch(0.750 0.183 55.934)',  // Traffic Light Orange
-] as const;
+const HAZARD_TYPE_COLORS = Object.values(HAZARD_CHART_COLORS);
 
 const detectionAccuracyChartConfig = {
     accuracy: { label: 'Accuracy %', color: 'var(--primary)' },
@@ -51,13 +42,6 @@ export default function Dashboard({
     detectionAccuracyData,
     hazardsOverTimeData,
 }: DashboardProps) {
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 1500);
-        return () => clearTimeout(timer);
-    }, []);
-
     return (
         <AdminLayout>
             <Head title="Metrics" />
@@ -69,7 +53,7 @@ export default function Dashboard({
                 </p>
             </div>
 
-            <Skeleton loading={isLoading} animate="pulse" transition>
+            <>
                 {/* Stat Cards */}
                 <div className="grid gap-6 md:grid-cols-3 mb-6">
                     {dashboardStats.map((stat) => (
@@ -199,7 +183,7 @@ export default function Dashboard({
                         </Card>
                     </div>
                 </div>
-            </Skeleton>
+            </>
         </AdminLayout>
     );
 }

@@ -39,6 +39,16 @@ export function getHazardColor(type: string, theme: 'day' | 'night' | 'dusk' | '
     return palette[type as keyof typeof palette] || palette.default;
 }
 
+export const HAZARD_CHART_COLORS = {
+    potholes:           '#ef4444',
+    roadExcavation:     '#f97316',
+    roadBarriers:       '#eab308',
+    trafficSigns:       '#3b82f6',
+    trafficLightRed:    '#ef4444',
+    trafficLightGreen:  '#22c55e',
+    trafficLightOrange: '#f97316',
+} as const;
+
 // Helper to consistently assign Tailwind classes to hazard types
 export function getHazardTailwindColors(type: string): string {
     switch (type) {
