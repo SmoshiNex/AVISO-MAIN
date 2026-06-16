@@ -1,3 +1,5 @@
+import { type HazardLog } from '@/types/models';
+
 export type LngLat = [number, number];
 
 export type RiderDef = {
@@ -21,6 +23,17 @@ export type Rider = {
     route: LngLat[];
     userInfo: RiderDef['userInfo'];
 };
+
+export interface EmergencyAlert {
+    id: string;
+    riderId: string;
+    riderName: string;
+    colorBase: string;
+    coords: LngLat;
+    userInfo: RiderDef['userInfo'];
+    triggeredAt: string;
+    nearestHazard: HazardLog | null;
+}
 
 export const RIDER_DEFS: RiderDef[] = [
     {

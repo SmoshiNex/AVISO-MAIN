@@ -1,4 +1,5 @@
 import { type LngLat } from './riderData';
+import { type HazardLog } from '@/types/models';
 
 export function getRiderThemeColor(base: string, theme: 'day' | 'night' | 'dusk' | 'dawn'): string {
     if (theme === 'night') {
@@ -14,38 +15,30 @@ export function getRiderThemeColor(base: string, theme: 'day' | 'night' | 'dusk'
         if (base === 'green') return '#86efac';
         if (base === 'orange') return '#fdba74';
     }
-    // Day (default)
     if (base === 'blue') return '#3b82f6';
     if (base === 'green') return '#10b981';
     if (base === 'orange') return '#f59e0b';
     return '#3b82f6';
 }
 
-export function interpolate(p1: LngLat, p2: LngLat, t: number): LngLat {
-    return [p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t];
+// Haversine distance in meters between two [lng, lat] points
+export function haversineDistance(p1: LngLat, p2: LngLat): number {
+    const R = 6_371_000;
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(p2[1] - p1[1]);
+    const dLon = toRad(p2[0] - p1[0]);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(p1[1])) * Math.cos(toRad(p2[1])) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function getBearing(p1: LngLat, p2: LngLat): number {
-    const dLon = p2[0] - p1[0];
-    const dLat = p2[1] - p1[1];
-    return Math.atan2(dLon, dLat) * (180 / Math.PI);
-}
-
-export async function fetchRoadRoute(waypoints: LngLat[], token: string): Promise<LngLat[] | null> {
-    if (!token) return null;
-    const coordsParam = waypoints.map(([lng, lat]) => `${lng},${lat}`).join(';');
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsParam}?geometries=geojson&overview=full&access_token=${token}`;
-
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        const coords = data?.routes?.[0]?.geometry?.coordinates;
-        if (Array.isArray(coords) && coords.length > 1) {
-            return coords as LngLat[];
-        }
-        return null;
-    } catch (err) {
-        console.error('Directions API request failed', err);
-        return null;
-    }
+// Returns the hazard closest in distance to coords, or null if the list is empty
+export function findNearestHazard(coords: LngLat, hazards: HazardLog[]): HazardLog | null {
+    if (!hazards.length) return null;
+    return hazards.reduce((nearest, hazard) => {
+        const d = haversineDistance(coords, [hazard.longitude, hazard.latitude]);
+        const nearestD = haversineDistance(coords, [nearest.longitude, nearest.latitude]);
+        return d < nearestD ? hazard : nearest;
+    });
 }
