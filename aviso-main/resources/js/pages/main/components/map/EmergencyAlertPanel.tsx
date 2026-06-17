@@ -34,7 +34,8 @@ async function reverseGeocode(lng: number, lat: number): Promise<string> {
 export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAlertPanelProps) {
     const riderColor = getRiderThemeColor(emergency.colorBase, theme);
     const hazard = emergency.nearestHazard;
-    const [lng, lat] = emergency.coords;
+    const lng = Number(emergency.coords[0]);
+    const lat = Number(emergency.coords[1]);
     const [resolvedArea, setResolvedArea] = useState<string | null>(null);
 
     useEffect(() => {
