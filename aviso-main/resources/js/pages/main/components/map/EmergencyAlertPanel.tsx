@@ -1,4 +1,5 @@
-import { X, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, AlertTriangle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { type EmergencyAlert } from './riderData';
@@ -11,9 +12,37 @@ interface EmergencyAlertPanelProps {
     onClose: () => void;
 }
 
+async function reverseGeocode(lng: number, lat: number): Promise<string> {
+    const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+    if (!token) throw new Error('No Mapbox token');
+    const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=neighborhood,locality,district,place&access_token=${token}&language=en&limit=1`
+    );
+    if (!res.ok) throw new Error('Geocoding request failed');
+    const data = await res.json();
+    const feature = data.features?.[0];
+    if (!feature) throw new Error('No results');
+
+    const ctx: Array<{ id: string; text: string }> = feature.context ?? [];
+    const neighborhood = ctx.find(c => c.id.startsWith('neighborhood'))?.text;
+    const locality = ctx.find(c => c.id.startsWith('locality'))?.text;
+    const district = ctx.find(c => c.id.startsWith('district'))?.text;
+
+    return neighborhood ?? locality ?? district ?? feature.text ?? 'Unknown';
+}
+
 export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAlertPanelProps) {
     const riderColor = getRiderThemeColor(emergency.colorBase, theme);
     const hazard = emergency.nearestHazard;
+    const [lng, lat] = emergency.coords;
+    const [resolvedArea, setResolvedArea] = useState<string | null>(null);
+
+    useEffect(() => {
+        setResolvedArea(null);
+        reverseGeocode(lng, lat)
+            .then(area => setResolvedArea(area))
+            .catch(() => setResolvedArea(hazard?.area ?? 'Unknown'));
+    }, [lng, lat]);
 
     const triggeredTime = new Date(emergency.triggeredAt).toLocaleTimeString([], {
         hour: '2-digit',
@@ -51,6 +80,34 @@ export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAler
                     <span className="text-xs font-bold text-destructive uppercase tracking-wide">Active Emergency</span>
                 </div>
                 <span className="text-[10px] text-muted-foreground font-mono">{triggeredTime}</span>
+            </div>
+
+            {/* Current Position */}
+            <div className="border border-border/60 rounded-lg p-3 mb-3 bg-muted/30">
+                <div className="flex items-center gap-1.5 mb-2">
+                    <MapPin className="w-3.5 h-3.5 text-destructive" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                        Current Position
+                    </span>
+                </div>
+                <div className="space-y-1 text-[11px] text-muted-foreground">
+                    <div className="flex justify-between">
+                        <span>Latitude:</span>
+                        <span className="font-mono text-foreground">{lat.toFixed(6)}°</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span>Longitude:</span>
+                        <span className="font-mono text-foreground">{lng.toFixed(6)}°</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span>Area:</span>
+                        {resolvedArea !== null ? (
+                            <span className="text-foreground font-medium">{resolvedArea}</span>
+                        ) : (
+                            <span className="text-muted-foreground/60 animate-pulse text-[10px]">Resolving…</span>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Rider Info */}
@@ -95,10 +152,6 @@ export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAler
                         <span className="font-mono text-[10px] text-muted-foreground">{hazard.haz_code}</span>
                     </div>
                     <div className="space-y-1 text-[11px] text-muted-foreground">
-                        <div className="flex justify-between">
-                            <span>Area:</span>
-                            <span className="text-foreground font-medium">{hazard.area}</span>
-                        </div>
                         <div className="flex justify-between">
                             <span>Confidence:</span>
                             <span className="text-foreground font-medium">{hazard.confidence}%</span>
