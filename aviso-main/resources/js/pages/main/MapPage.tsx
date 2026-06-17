@@ -18,20 +18,21 @@ import { findNearestHazard } from './components/map/riderUtils';
 const STYLE_STANDARD = 'mapbox://styles/mapbox/standard';
 
 const HAZARD_STATS: {
-    type: string;
+    types: string[];
     label: string;
     icon: React.ReactNode;
     description: string;
 }[] = [
-    { type: 'Pothole',        label: 'Potholes',       icon: <AlertCircle className="w-5 h-5" />,  description: 'Surface defects'    },
-    { type: 'Road Excavation', label: 'Excavations',   icon: <Construction className="w-5 h-5" />, description: 'Active digging'     },
-    { type: 'Road Barrier',   label: 'Road Barriers',  icon: <Cone className="w-5 h-5" />,         description: 'Blocked lanes'      },
-    { type: 'Traffic Sign',   label: 'Traffic Signs',  icon: <MapPin className="w-5 h-5" />,       description: 'Signage detected'   },
-    { type: 'Traffic Light',  label: 'Traffic Lights', icon: <StopCircle className="w-5 h-5" />,   description: 'Detected locations' },
+    { types: ['Pothole'],                                                                  label: 'Potholes',       icon: <AlertCircle className="w-5 h-5" />,  description: 'Surface defects'    },
+    { types: ['Road Excavation'],                                                          label: 'Excavations',    icon: <Construction className="w-5 h-5" />, description: 'Active digging'     },
+    { types: ['Road Barrier'],                                                             label: 'Road Barriers',  icon: <Cone className="w-5 h-5" />,         description: 'Blocked lanes'      },
+    { types: ['Traffic Sign'],                                                             label: 'Traffic Signs',  icon: <MapPin className="w-5 h-5" />,       description: 'Signage detected'   },
+    { types: ['Traffic Light Red', 'Traffic Light Orange', 'Traffic Light Green'],         label: 'Traffic Lights', icon: <StopCircle className="w-5 h-5" />,   description: 'Red / Orange / Green' },
 ];
 
 interface MapPageProps {
     hazards: HazardLog[];
+    emergencyHazardTypes: string[];
 }
 
 function RealTimeClock() {
@@ -52,9 +53,11 @@ function RealTimeClock() {
     );
 }
 
-export default function MapPage({ hazards }: MapPageProps) {
-    // Map theme preset
-    const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>('day');
+export default function MapPage({ hazards, emergencyHazardTypes }: MapPageProps) {
+    // Map theme preset — respects localStorage preference set in Settings
+    const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>(
+        () => (localStorage.getItem('aviso_map_theme') as 'day' | 'night' | 'dusk' | 'dawn') ?? 'day'
+    );
 
     // Hazard filter state
     const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -74,8 +77,11 @@ export default function MapPage({ hazards }: MapPageProps) {
         if (initialized.current || !hazards.length) return;
         initialized.current = true;
 
-        const count = Math.floor(Math.random() * 8) + 3; // 3–10
-        const shuffledHazards = [...hazards].sort(() => Math.random() - 0.5).slice(0, count);
+        const eligibleHazards = hazards.filter(h => emergencyHazardTypes.includes(h.type));
+        if (!eligibleHazards.length) return;
+
+        const count = Math.min(Math.floor(Math.random() * 8) + 3, eligibleHazards.length); // 3–10, capped to available
+        const shuffledHazards = [...eligibleHazards].sort(() => Math.random() - 0.5).slice(0, count);
         const shuffledRiders = [...RIDER_DEFS].sort(() => Math.random() - 0.5).slice(0, count);
 
         setActiveEmergencies(
@@ -117,23 +123,23 @@ export default function MapPage({ hazards }: MapPageProps) {
             {/* ── Stats row ─────────────────────────────────────────── */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
                 {HAZARD_STATS.map((stat) => (
-                    <Card key={stat.type} className="border-border/50 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <Card key={stat.label} className="border-border/50 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                         <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-3">
                                 <div className="p-2 rounded-lg bg-background shadow-sm border">
-                                    <div className={getHazardTailwindColors(stat.type).split(' ')[0]}>
+                                    <div className={getHazardTailwindColors(stat.types[0]).split(' ')[0]}>
                                         {stat.icon}
                                     </div>
                                 </div>
                                 <div className="text-2xl font-bold font-heading">
-                                    {hazards.filter(h => h.type === stat.type).length}
+                                    {hazards.filter(h => stat.types.includes(h.type)).length}
                                 </div>
                             </div>
                             <p className="text-sm font-medium leading-snug">{stat.label}</p>
                             <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{stat.description}</p>
                             <div
                                 className="h-0.5 rounded-full mt-3 opacity-60"
-                                style={{ backgroundColor: getHazardColor(stat.type) }}
+                                style={{ backgroundColor: getHazardColor(stat.types[0]) }}
                             />
                         </CardContent>
                     </Card>

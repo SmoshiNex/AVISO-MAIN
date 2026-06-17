@@ -1,6 +1,7 @@
 export interface User {
     id: number;
     first_name: string;
+    middle_name?: string | null;
     last_name: string;
     username: string;
     email: string;
@@ -9,6 +10,14 @@ export interface User {
     role: 'admin' | 'rider' | string;
     created_at: string;
     updated_at?: string;
+}
+
+export interface SystemSetting {
+    id: number;
+    confidence_threshold: number;
+    items_per_page: number;
+    default_sort: string;
+    emergency_hazard_types: string[];
 }
 
 export interface HazardLog {

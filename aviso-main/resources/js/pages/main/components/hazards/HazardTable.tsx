@@ -93,7 +93,9 @@ export function HazardTable({
                 return <Cone className="w-4 h-4" />;
             case "Traffic Sign":
                 return <MapPin className="w-4 h-4" />;
-            case "Traffic Light":
+            case "Traffic Light Red":
+            case "Traffic Light Orange":
+            case "Traffic Light Green":
                 return <StopCircle className="w-4 h-4" />;
             default:
                 return <AlertCircle className="w-4 h-4" />;

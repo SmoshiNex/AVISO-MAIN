@@ -110,7 +110,7 @@ class HazardLogService
         if (isset($data['type'])) {
             if ($data['type'] === 'Traffic Sign') {
                 $prefix = 'TS-';
-            } elseif ($data['type'] === 'Traffic Light') {
+            } elseif (in_array($data['type'], ['Traffic Light Red', 'Traffic Light Orange', 'Traffic Light Green'])) {
                 $prefix = 'TL-';
             }
         }

@@ -8,18 +8,22 @@ use Illuminate\Database\Eloquent\Model;
 class HazardLog extends Model
 {
     // ── Type constants ────────────────────────────────────────────────────────
-    const TYPE_POTHOLE          = 'Pothole';
-    const TYPE_ROAD_EXCAVATION  = 'Road Excavation';
-    const TYPE_ROAD_BARRIER     = 'Road Barrier';
-    const TYPE_TRAFFIC_SIGN     = 'Traffic Sign';
-    const TYPE_TRAFFIC_LIGHT    = 'Traffic Light';
+    const TYPE_POTHOLE               = 'Pothole';
+    const TYPE_ROAD_EXCAVATION       = 'Road Excavation';
+    const TYPE_ROAD_BARRIER          = 'Road Barrier';
+    const TYPE_TRAFFIC_SIGN          = 'Traffic Sign';
+    const TYPE_TRAFFIC_LIGHT_RED     = 'Traffic Light Red';
+    const TYPE_TRAFFIC_LIGHT_ORANGE  = 'Traffic Light Orange';
+    const TYPE_TRAFFIC_LIGHT_GREEN   = 'Traffic Light Green';
 
     const TYPES = [
         self::TYPE_POTHOLE,
         self::TYPE_ROAD_EXCAVATION,
         self::TYPE_ROAD_BARRIER,
         self::TYPE_TRAFFIC_SIGN,
-        self::TYPE_TRAFFIC_LIGHT,
+        self::TYPE_TRAFFIC_LIGHT_RED,
+        self::TYPE_TRAFFIC_LIGHT_ORANGE,
+        self::TYPE_TRAFFIC_LIGHT_GREEN,
     ];
 
     // ── Status constants ──────────────────────────────────────────────────────
