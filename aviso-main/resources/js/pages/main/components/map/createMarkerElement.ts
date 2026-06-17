@@ -14,7 +14,6 @@ export function createMarkerElement(color: string, onClick: () => void): HTMLDiv
     wrapper.style.width = '28px';
     wrapper.style.height = '28px';
     wrapper.style.cursor = 'pointer';
-    wrapper.style.position = 'relative';
     wrapper.className = 'rider-marker-wrapper';
 
     // Pulse ring
@@ -73,7 +72,6 @@ export function createEmergencyMarkerElement(onClick: () => void): HTMLDivElemen
     wrapper.style.width = '40px';
     wrapper.style.height = '40px';
     wrapper.style.cursor = 'pointer';
-    wrapper.style.position = 'relative';
     wrapper.className = 'emergency-marker-wrapper';
 
     // Outer slow-pulse ring

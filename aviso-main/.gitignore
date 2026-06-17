@@ -25,4 +25,4 @@ Thumbs.db
 
 # Claude / project documentation (local only)
 CLAUDE.md
-/system architecture/
+/.claude/

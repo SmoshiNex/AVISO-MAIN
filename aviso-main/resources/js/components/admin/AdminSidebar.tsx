@@ -1,6 +1,7 @@
 import { Link, usePage, router } from "@inertiajs/react";
 import { useState } from "react";
 import { toast } from "@/lib/toast";
+import { useTheme } from "next-themes";
 import {
     Map,
     AlertTriangle,
@@ -9,6 +10,8 @@ import {
     LogOut,
     LayoutDashboard,
     Users,
+    Sun,
+    Moon,
 } from "lucide-react";
 import {
     Sidebar,
@@ -74,6 +77,7 @@ export default function AdminSidebar() {
     const { url, props } = usePage<any>();
     const user = props.auth?.user;
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+    const { resolvedTheme, setTheme } = useTheme();
 
     const executeLogout = () => {
         toast.setPending("info", "You have been successfully logged out.");
@@ -174,6 +178,21 @@ export default function AdminSidebar() {
                 </div>
 
                 <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                            className="text-muted-foreground hover:bg-primary/10 hover:text-primary text-base py-4 rounded-md cursor-pointer mb-1"
+                        >
+                            {resolvedTheme === 'dark' ? (
+                                <Sun className="w-5 h-5 shrink-0" />
+                            ) : (
+                                <Moon className="w-5 h-5 shrink-0" />
+                            )}
+                            <span className="group-data-[collapsible=icon]:hidden">
+                                {resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                            </span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             asChild
