@@ -22,13 +22,14 @@ import { useEffect } from 'react';
 
 function ThemedToaster() {
     const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
     return (
         <Toaster
             position="top-center"
-            theme={(resolvedTheme as 'dark' | 'light') ?? 'dark'}
+            theme={isDark ? 'light' : 'dark'}
             options={{
                 roundness: 16,
-                fill: resolvedTheme === 'light' ? '#ffffff' : '#09090b',
+                fill: isDark ? '#ffffff' : '#09090b',
             }}
         />
     );
