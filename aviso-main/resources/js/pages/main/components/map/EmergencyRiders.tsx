@@ -58,7 +58,7 @@ export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve
                     setActivePanel(prev => prev === emergency.id ? null : emergency.id);
                 });
 
-                const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+                const marker = new mapboxgl.Marker({ element: el, anchor: 'center', offset: [0, -44] })
                     .setLngLat(emergency.coords)
                     .addTo(map);
 
