@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { User, SystemSetting } from '@/types/models';
 import { Sun, Moon, Monitor, User as UserIcon, Shield, Settings2, AlertTriangle } from 'lucide-react';
+import { AddressFields, type AddressValue } from '@/pages/main/components/users/AddressFields';
+import { sanitizeText, sanitizeAlphanumeric } from '@/lib/sanitize';
+import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 
 interface SettingsProps {
@@ -58,12 +61,20 @@ export default function Settings({ systemSettings }: SettingsProps) {
         username:       user.username ?? '',
         email:          user.email ?? '',
         contact_number: user.contact_number ?? '',
-        address:        user.address ?? '',
+        street:         user.street ?? '',
+        barangay_id:    user.barangay_id ?? '',
+        city_id:        user.city_id ?? '',
+        province_id:    user.province_id ?? '',
+        region_id:      user.region_id ?? '',
     });
 
     const submitProfile = (e: FormEvent) => {
         e.preventDefault();
-        profileForm.post(route('settings.profile'), { preserveScroll: true });
+        profileForm.post(route('settings.profile'), {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Profile updated successfully'),
+            onError: () => toast.error({ title: 'Failed to save profile', description: 'Please check the form for errors.' }),
+        });
     };
 
     // ── Password form ───────────────────────────────────────────
@@ -77,7 +88,11 @@ export default function Settings({ systemSettings }: SettingsProps) {
         e.preventDefault();
         passwordForm.post(route('settings.password'), {
             preserveScroll: true,
-            onSuccess: () => passwordForm.reset(),
+            onSuccess: () => {
+                passwordForm.reset();
+                toast.success('Password changed successfully');
+            },
+            onError: () => toast.error({ title: 'Failed to change password', description: 'Check your current password and try again.' }),
         });
     };
 
@@ -99,7 +114,11 @@ export default function Settings({ systemSettings }: SettingsProps) {
 
     const submitSystem = (e: FormEvent) => {
         e.preventDefault();
-        systemForm.post(route('settings.system'), { preserveScroll: true });
+        systemForm.post(route('settings.system'), {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Settings saved successfully'),
+            onError: () => toast.error('Failed to save settings'),
+        });
     };
 
     // ── Map theme (localStorage) ────────────────────────────────
@@ -152,6 +171,7 @@ export default function Settings({ systemSettings }: SettingsProps) {
                                             id="first_name"
                                             value={profileForm.data.first_name}
                                             onChange={e => profileForm.setData('first_name', e.target.value)}
+                                            onBlur={e => profileForm.setData('first_name', sanitizeText(e.target.value))}
                                         />
                                         {profileForm.errors.first_name && (
                                             <p className="text-xs text-destructive">{profileForm.errors.first_name}</p>
@@ -163,6 +183,7 @@ export default function Settings({ systemSettings }: SettingsProps) {
                                             id="middle_name"
                                             value={profileForm.data.middle_name}
                                             onChange={e => profileForm.setData('middle_name', e.target.value)}
+                                            onBlur={e => profileForm.setData('middle_name', sanitizeText(e.target.value))}
                                             placeholder="Optional"
                                         />
                                     </div>
@@ -172,6 +193,7 @@ export default function Settings({ systemSettings }: SettingsProps) {
                                             id="last_name"
                                             value={profileForm.data.last_name}
                                             onChange={e => profileForm.setData('last_name', e.target.value)}
+                                            onBlur={e => profileForm.setData('last_name', sanitizeText(e.target.value))}
                                         />
                                         {profileForm.errors.last_name && (
                                             <p className="text-xs text-destructive">{profileForm.errors.last_name}</p>
@@ -185,7 +207,7 @@ export default function Settings({ systemSettings }: SettingsProps) {
                                         <Input
                                             id="username"
                                             value={profileForm.data.username}
-                                            onChange={e => profileForm.setData('username', e.target.value)}
+                                            onChange={e => profileForm.setData('username', sanitizeAlphanumeric(e.target.value))}
                                         />
                                         {profileForm.errors.username && (
                                             <p className="text-xs text-destructive">{profileForm.errors.username}</p>
@@ -205,26 +227,28 @@ export default function Settings({ systemSettings }: SettingsProps) {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="contact_number">Contact Number</Label>
-                                        <Input
-                                            id="contact_number"
-                                            value={profileForm.data.contact_number}
-                                            onChange={e => profileForm.setData('contact_number', e.target.value)}
-                                            placeholder="e.g. 09171234567"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="address">Address</Label>
-                                        <Input
-                                            id="address"
-                                            value={profileForm.data.address}
-                                            onChange={e => profileForm.setData('address', e.target.value)}
-                                            placeholder="Barangay, City"
-                                        />
-                                    </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="contact_number">Contact Number</Label>
+                                    <Input
+                                        id="contact_number"
+                                        value={profileForm.data.contact_number}
+                                        onChange={e => profileForm.setData('contact_number', e.target.value)}
+                                        onBlur={e => profileForm.setData('contact_number', sanitizeText(e.target.value))}
+                                        placeholder="e.g. 09171234567"
+                                    />
                                 </div>
+
+                                <AddressFields
+                                    value={{
+                                        street:      profileForm.data.street,
+                                        province_id: profileForm.data.province_id,
+                                        city_id:     profileForm.data.city_id,
+                                        barangay_id: profileForm.data.barangay_id,
+                                        region_id:   profileForm.data.region_id,
+                                    }}
+                                    onChange={(field, val) => profileForm.setData(field as any, val)}
+                                    errors={profileForm.errors}
+                                />
 
                                 <div className="flex justify-end">
                                     <Button type="submit" disabled={profileForm.processing}>

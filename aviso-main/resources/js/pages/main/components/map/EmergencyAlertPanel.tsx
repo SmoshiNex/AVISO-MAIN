@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, AlertTriangle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ interface EmergencyAlertPanelProps {
     emergency: EmergencyAlert;
     theme: 'day' | 'night' | 'dusk' | 'dawn';
     onClose: () => void;
+    onResolve: () => void;
 }
 
 async function reverseGeocode(lng: number, lat: number): Promise<string> {
@@ -31,7 +32,7 @@ async function reverseGeocode(lng: number, lat: number): Promise<string> {
     return neighborhood ?? locality ?? district ?? feature.text ?? 'Unknown';
 }
 
-export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAlertPanelProps) {
+export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve }: EmergencyAlertPanelProps) {
     const riderColor = getRiderThemeColor(emergency.colorBase, theme);
     const hazard = emergency.nearestHazard;
     const lng = Number(emergency.coords[0]);
@@ -45,11 +46,26 @@ export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAler
             .catch(() => setResolvedArea(hazard?.area ?? 'Unknown'));
     }, [lng, lat]);
 
-    const triggeredTime = new Date(emergency.triggeredAt).toLocaleTimeString([], {
+    const [elapsed, setElapsed] = useState('');
+    const triggeredDate = new Date(emergency.triggeredAt);
+    const triggeredTime = triggeredDate.toLocaleTimeString('en-PH', {
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
+        hour12: true,
     });
+
+    const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        const update = () => {
+            const secs = Math.floor((Date.now() - triggeredDate.getTime()) / 1000);
+            if (secs < 60)       setElapsed(`${secs}s ago`);
+            else if (secs < 3600) setElapsed(`${Math.floor(secs / 60)}m ago`);
+            else                  setElapsed(`${Math.floor(secs / 3600)}h ago`);
+        };
+        update();
+        elapsedTimerRef.current = setInterval(update, 10_000);
+        return () => { if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current); };
+    }, [emergency.triggeredAt]);
 
     return (
         <div className="absolute bottom-8 left-3 z-10 bg-background/98 backdrop-blur shadow-2xl border border-destructive/30 rounded-xl p-4 w-80 transition-all">
@@ -80,7 +96,10 @@ export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAler
                     </span>
                     <span className="text-xs font-bold text-destructive uppercase tracking-wide">Active Emergency</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground font-mono">{triggeredTime}</span>
+                <div className="text-right">
+                    <div className="text-[10px] text-muted-foreground font-mono">{triggeredTime}</div>
+                    <div className="text-[9px] text-muted-foreground/70">{elapsed}</div>
+                </div>
             </div>
 
             {/* Current Position */}
@@ -183,7 +202,7 @@ export function EmergencyAlertPanel({ emergency, theme, onClose }: EmergencyAler
                 variant="destructive"
                 size="sm"
                 className="w-full"
-                onClick={onClose}
+                onClick={onResolve}
             >
                 Resolve Emergency
             </Button>

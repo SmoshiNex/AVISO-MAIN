@@ -13,7 +13,8 @@
         "laravel/reverb": "^1.10",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
-        "tightenco/ziggy": "^2.0"
+        "tightenco/ziggy": "^2.0",
+        "yajra/laravel-address": "^12.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

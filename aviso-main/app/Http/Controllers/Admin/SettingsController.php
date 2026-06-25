@@ -3,18 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateSettingsProfileRequest;
 use App\Services\SystemSettingService;
+use App\Services\UserService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SettingsController extends Controller
 {
-    public function __construct(protected SystemSettingService $settingService) {}
+    public function __construct(
+        protected SystemSettingService $settingService,
+        protected UserService $userService,
+    ) {}
 
     public function index(): Response
     {
@@ -23,21 +27,9 @@ class SettingsController extends Controller
         ]);
     }
 
-    public function updateProfile(Request $request): RedirectResponse
+    public function updateProfile(UpdateSettingsProfileRequest $request): RedirectResponse
     {
-        $user = $request->user();
-
-        $validated = $request->validate([
-            'first_name'     => 'required|string|max:255',
-            'middle_name'    => 'nullable|string|max:255',
-            'last_name'      => 'required|string|max:255',
-            'username'       => ['required', 'string', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'email'          => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'contact_number' => 'nullable|string|max:20',
-            'address'        => 'nullable|string|max:1000',
-        ]);
-
-        $user->update($validated);
+        $this->userService->updateUser($request->user(), $request->validated());
 
         return back()->with('success', 'Profile updated successfully.');
     }

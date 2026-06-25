@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Map, MapControls } from '@/components/ui/map';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Cone, Construction, MapPin, StopCircle } from 'lucide-react';
+import { AlertCircle, Cone, Construction, MapPin, ShieldAlert, StopCircle } from 'lucide-react';
 
 // Subcomponents
 import { SearchBox } from './components/map/SearchBox';
@@ -11,8 +11,9 @@ import { HazardPins } from './components/map/HazardPins';
 import { MapController } from './components/map/MapController';
 import { EmergencyRiders } from './components/map/EmergencyRiders';
 import { getHazardColor, getHazardTailwindColors } from '@/lib/hazards';
+import { toast } from '@/lib/toast';
 import { type HazardLog } from '@/types/models';
-import { RIDER_DEFS, type EmergencyAlert, type LngLat } from './components/map/riderData';
+import { type EmergencyAlert, type LngLat } from './components/map/riderData';
 import { findNearestHazard } from './components/map/riderUtils';
 
 const STYLE_STANDARD = 'mapbox://styles/mapbox/standard';
@@ -32,7 +33,6 @@ const HAZARD_STATS: {
 
 interface MapPageProps {
     hazards: HazardLog[];
-    emergencyHazardTypes: string[];
 }
 
 function RealTimeClock() {
@@ -53,7 +53,9 @@ function RealTimeClock() {
     );
 }
 
-export default function MapPage({ hazards, emergencyHazardTypes }: MapPageProps) {
+
+
+export default function MapPage({ hazards }: MapPageProps) {
     // Map theme preset — respects localStorage preference set in Settings
     const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>(
         () => (localStorage.getItem('aviso_map_theme') as 'day' | 'night' | 'dusk' | 'dawn') ?? 'day'
@@ -69,37 +71,208 @@ export default function MapPage({ hazards, emergencyHazardTypes }: MapPageProps)
     const filteredHazards = useMemo(() => hazards.filter(h => activeFilters.includes(h.type)), [hazards, activeFilters]);
     const availableTypes = useMemo(() => Array.from(new Set(hazards.map(h => h.type))), [hazards]);
 
-    // Emergency alert state — auto-populated from hazard locations on first load
-    const [activeEmergencies, setActiveEmergencies] = useState<EmergencyAlert[]>([]);
-    const initialized = useRef(false);
+    // ── Jarvis audio ─────────────────────────────────────────────────────
+    const audioCtxRef     = useRef<AudioContext | null>(null);
+    const sosBufRef       = useRef<AudioBuffer | null>(null);
+    const alarmSrcRef     = useRef<AudioBufferSourceNode | null>(null);
+    const alarmActiveRef  = useRef(false);
+    const pendingAlarmRef = useRef(false);
+    const startLoopRef    = useRef<() => void>(() => {});
 
     useEffect(() => {
-        if (initialized.current || !hazards.length) return;
-        initialized.current = true;
+        let initing = false;
 
-        const eligibleHazards = hazards.filter(h => emergencyHazardTypes.includes(h.type));
-        if (!eligibleHazards.length) return;
+        const tryInit = async () => {
+            if (audioCtxRef.current || initing) return;
+            initing = true;
+            console.log('[AVISO AUDIO] tryInit — creating AudioContext with user gesture');
+            try {
+                const ctx = new AudioContext();
+                console.log('[AVISO AUDIO] AudioContext created, state:', ctx.state);
 
-        const count = Math.min(Math.floor(Math.random() * 8) + 3, eligibleHazards.length); // 3–10, capped to available
-        const shuffledHazards = [...eligibleHazards].sort(() => Math.random() - 0.5).slice(0, count);
-        const shuffledRiders = [...RIDER_DEFS].sort(() => Math.random() - 0.5).slice(0, count);
+                // Race resume against 2 s — prevents initing from staying true if Chrome
+                // queues the promise (e.g. called without a real gesture somehow).
+                await Promise.race([
+                    ctx.resume(),
+                    new Promise<void>((_, reject) =>
+                        setTimeout(() => reject(new Error('resume timeout')), 2000)
+                    ),
+                ]);
+                console.log('[AVISO AUDIO] After resume(), state:', ctx.state);
 
-        setActiveEmergencies(
-            shuffledHazards.map((hazard, i) => {
-                const def = shuffledRiders[i];
-                const coords: LngLat = [hazard.longitude, hazard.latitude];
-                return {
-                    id: `${Date.now()}-${i}`,
-                    riderId: def.id,
-                    riderName: def.name,
-                    colorBase: def.colorBase,
+                if (ctx.state !== 'running') {
+                    console.warn('[AVISO AUDIO] Still suspended — closing and waiting for next gesture.');
+                    await ctx.close();
+                    initing = false;
+                    return;
+                }
+
+                audioCtxRef.current = ctx;
+                console.log('[AVISO AUDIO] AudioContext ready ✓');
+                const res = await fetch('/jarvis/sos', { credentials: 'same-origin' });
+                console.log('[AVISO AUDIO] /jarvis/sos response status:', res.status);
+                if (res.ok) sosBufRef.current = await ctx.decodeAudioData(await res.arrayBuffer());
+                console.log('[AVISO AUDIO] SOS buffer loaded:', !!sosBufRef.current);
+                if (pendingAlarmRef.current) {
+                    pendingAlarmRef.current = false;
+                    startLoopRef.current();
+                }
+            } catch (err) {
+                console.warn('[AVISO AUDIO] Error in tryInit:', err);
+                initing = false;
+            }
+        };
+
+        console.log('[AVISO AUDIO] Waiting for first user gesture to init AudioContext.');
+        toast.info({
+            title: 'Click to enable audio',
+            description: 'Click anywhere on the map to activate emergency audio alerts.',
+        });
+
+        // Do NOT call tryInit() on mount — Chrome blocks AudioContext without a gesture
+        // and the pending ctx.resume() promise keeps initing=true, blocking all future clicks.
+        document.addEventListener('click',      tryInit);
+        document.addEventListener('keydown',    tryInit);
+        document.addEventListener('touchstart', tryInit);
+        return () => {
+            document.removeEventListener('click',      tryInit);
+            document.removeEventListener('keydown',    tryInit);
+            document.removeEventListener('touchstart', tryInit);
+        };
+    }, []);
+
+    const startAlarmLoop = () => {
+        if (!audioCtxRef.current || !sosBufRef.current) {
+            pendingAlarmRef.current = true; // retry on next user interaction
+            return;
+        }
+        if (alarmActiveRef.current) return;
+        alarmActiveRef.current = true;
+
+        const loop = () => {
+            if (!alarmActiveRef.current || !audioCtxRef.current || !sosBufRef.current) return;
+            const src = audioCtxRef.current.createBufferSource();
+            src.buffer = sosBufRef.current;
+            src.connect(audioCtxRef.current.destination);
+            src.onended = () => {
+                alarmSrcRef.current = null;
+                if (alarmActiveRef.current) setTimeout(loop, 3000);
+            };
+            alarmSrcRef.current = src;
+            src.start();
+        };
+        loop();
+    };
+    startLoopRef.current = startAlarmLoop; // keep ref in sync on every render
+
+    const stopAlarmLoop = () => {
+        alarmActiveRef.current = false;
+        pendingAlarmRef.current = false;
+        try { alarmSrcRef.current?.stop(); } catch {}
+        alarmSrcRef.current = null;
+    };
+
+    // Emergency alert state — populated from real Reverb broadcasts
+    const [activeEmergencies, setActiveEmergencies] = useState<EmergencyAlert[]>([]);
+
+    // Stop alarm when all emergencies are resolved
+    useEffect(() => {
+        if (activeEmergencies.length === 0) stopAlarmLoop();
+    }, [activeEmergencies.length]);
+
+    useEffect(() => {
+        const pusher = (window.Echo as any).connector?.pusher;
+        if (pusher) {
+            pusher.connection.bind('state_change', (states: { previous: string; current: string }) => {
+                console.log(`[AVISO WS] ${states.previous} → ${states.current}`);
+            });
+            pusher.connection.bind('connected', () => {
+                console.log('[AVISO WS] Connected to Reverb ✓  socket_id:', pusher.connection.socket_id);
+            });
+            pusher.connection.bind('disconnected', () => {
+                console.warn('[AVISO WS] Disconnected from Reverb');
+            });
+            pusher.connection.bind('error', (err: unknown) => {
+                console.error('[AVISO WS] Connection error:', err);
+            });
+        }
+
+        if (pusher) {
+            console.log('[AVISO WS] Current connection state:', pusher.connection.state);
+        }
+        console.log('[AVISO WS] Subscribing to channel: riders.live');
+        const channel = window.Echo.channel('riders.live');
+        channel.listen('.emergency.triggered', (data: any) => {
+            console.log('[AVISO WS] 🚨 emergency.triggered received:', data);
+            const coords: LngLat = [parseFloat(data.longitude), parseFloat(data.latitude)];
+            const riderName = data.rider_name ?? data.rider_code;
+
+            // Deterministic color per rider so repeated SOS events keep the same color
+            const COLOR_BASES = ['blue', 'green', 'orange'] as const;
+            const colorBase = COLOR_BASES[
+                data.rider_code.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 3
+            ];
+
+            const ctx = audioCtxRef.current;
+            if (ctx) {
+                fetch(`/jarvis/rider-alert?name=${encodeURIComponent(riderName)}`, { credentials: 'same-origin' })
+                    .then(res => res.ok ? res.arrayBuffer() : Promise.reject(res.status))
+                    .then(buf => ctx.decodeAudioData(buf))
+                    .then(buffer => {
+                        const src = ctx.createBufferSource();
+                        src.buffer = buffer;
+                        src.connect(ctx.destination);
+                        src.onended = () => startLoopRef.current();
+                        src.start();
+                    })
+                    .catch(() => startLoopRef.current());
+            } else {
+                startAlarmLoop();
+            }
+
+            setActiveEmergencies(prev => {
+                const existingIndex = prev.findIndex(e => e.riderId === data.rider_code);
+                if (existingIndex !== -1) {
+                    const updated = [...prev];
+                    updated[existingIndex] = {
+                        ...updated[existingIndex],
+                        id:          String(data.id),
+                        coords,
+                        triggeredAt: data.triggered_at,
+                    };
+                    return updated;
+                }
+                return [...prev, {
+                    id:          String(data.id),
+                    riderId:     data.rider_code,
+                    riderName,
+                    colorBase,
                     coords,
-                    userInfo: def.userInfo,
-                    triggeredAt: new Date().toISOString(),
+                    userInfo: {
+                        fullName: riderName,
+                        username: data.username ?? data.rider_code,
+                        contact:  data.contact  ?? '—',
+                        address:  data.address  ?? '—',
+                    },
+                    triggeredAt:   data.triggered_at,
                     nearestHazard: findNearestHazard(coords, hazards),
-                };
-            })
-        );
+                }];
+            });
+        });
+
+        // Update emergency marker position as rider moves after SOS
+        channel.listen('.location.updated', (data: any) => {
+            console.log('[AVISO WS] 📍 location.updated received:', data);
+            const newCoords: LngLat = [parseFloat(data.current_lng), parseFloat(data.current_lat)];
+            setActiveEmergencies(prev =>
+                prev.map(e => e.riderId === data.rider_code ? { ...e, coords: newCoords } : e)
+            );
+        });
+
+        return () => {
+            console.log('[AVISO WS] Leaving channel: riders.live');
+            window.Echo.leave('riders.live');
+        };
     }, [hazards]);
 
     const handleResolveEmergency = (id: string) => {
@@ -119,6 +292,69 @@ export default function MapPage({ hazards, emergencyHazardTypes }: MapPageProps)
                 </div>
                 <RealTimeClock />
             </div>
+
+            {/* ── SOS Live Status ───────────────────────────────────── */}
+            <Card className={`mb-4 overflow-hidden border transition-colors duration-500 shadow-sm ${
+                activeEmergencies.length > 0
+                    ? 'border-red-500/60 bg-red-50/60 dark:bg-red-950/25'
+                    : 'border-border/50'
+            }`}>
+                <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                        {/* Icon with pulse */}
+                        <div className={`relative shrink-0 p-2.5 rounded-lg ${
+                            activeEmergencies.length > 0
+                                ? 'bg-red-100 dark:bg-red-900/40'
+                                : 'bg-background border shadow-sm'
+                        }`}>
+                            {activeEmergencies.length > 0 && (
+                                <span className="absolute inset-0 rounded-lg bg-red-400 animate-ping opacity-25" />
+                            )}
+                            <ShieldAlert className={`w-5 h-5 ${
+                                activeEmergencies.length > 0 ? 'text-red-600' : 'text-muted-foreground'
+                            }`} />
+                        </div>
+
+                        {/* Text */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold leading-none">SOS Alerts</p>
+                                {activeEmergencies.length > 0 && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-500 text-white animate-pulse">
+                                        {activeEmergencies.length} ACTIVE
+                                    </span>
+                                )}
+                            </div>
+                            <p className={`text-xs mt-1 truncate ${
+                                activeEmergencies.length > 0
+                                    ? 'text-red-600 dark:text-red-400 font-medium'
+                                    : 'text-muted-foreground'
+                            }`}>
+                                {activeEmergencies.length === 0
+                                    ? 'No active emergencies — all riders safe'
+                                    : activeEmergencies.map(e => e.riderName).join(', ') + ' — requires immediate assistance'
+                                }
+                            </p>
+                        </div>
+
+                        {/* Count */}
+                        <div className={`text-3xl font-bold font-heading shrink-0 ${
+                            activeEmergencies.length > 0 ? 'text-red-600' : 'text-muted-foreground'
+                        }`}>
+                            {activeEmergencies.length}
+                        </div>
+
+                        {/* Live dot */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`w-2 h-2 rounded-full ${
+                                activeEmergencies.length > 0 ? 'bg-red-500 animate-pulse' : 'bg-green-500'
+                            }`} />
+                            <span className="text-[11px] text-muted-foreground font-medium">LIVE</span>
+                        </div>
+
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* ── Stats row ─────────────────────────────────────────── */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">

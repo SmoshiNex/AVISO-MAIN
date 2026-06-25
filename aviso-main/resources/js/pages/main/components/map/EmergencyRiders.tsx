@@ -34,7 +34,7 @@ function ensureSosKeyframes() {
 export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve }: EmergencyRidersProps) {
     const { map, isLoaded } = useMap();
     const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
-    const prevCountRef = useRef(0);
+    const prevIdsRef = useRef<Set<string>>(new Set());
     const [activePanel, setActivePanel] = useState<string | null>(null);
 
     // Keep activePanel in sync: if an emergency is resolved while panel is open, close it
@@ -50,6 +50,13 @@ export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve
 
         const currentIds = new Set(emergencies.map(e => e.id));
         const existingIds = new Set(Object.keys(markersRef.current));
+
+        // Move existing markers if coords changed (rider moved after SOS)
+        for (const emergency of emergencies) {
+            if (existingIds.has(emergency.id)) {
+                markersRef.current[emergency.id].setLngLat(emergency.coords);
+            }
+        }
 
         // Add new markers
         for (const emergency of emergencies) {
@@ -80,16 +87,13 @@ export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve
             }
         }
 
-        // Fit map to show all markers when the first batch arrives
-        if (emergencies.length > 0 && prevCountRef.current === 0) {
-            const lngs = emergencies.map(e => e.coords[0]);
-            const lats = emergencies.map(e => e.coords[1]);
-            map.fitBounds(
-                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-                { padding: 100, duration: 1200, maxZoom: 15 }
-            );
+        // Fly to newly added emergency and auto-open its panel
+        const newEmergency = emergencies.find(e => !prevIdsRef.current.has(e.id));
+        if (newEmergency) {
+            map.flyTo({ center: newEmergency.coords, zoom: 15, duration: 1500, essential: true });
+            setActivePanel(newEmergency.id);
         }
-        prevCountRef.current = emergencies.length;
+        prevIdsRef.current = new Set(emergencies.map(e => e.id));
     }, [isLoaded, map, emergencies]);
 
     // Cleanup all markers on unmount
@@ -113,7 +117,8 @@ export function EmergencyRiders({ theme = 'day', hazards, emergencies, onResolve
                 <EmergencyAlertPanel
                     emergency={activeEmergency}
                     theme={theme}
-                    onClose={() => handleResolve(activeEmergency.id)}
+                    onClose={() => setActivePanel(null)}
+                    onResolve={() => handleResolve(activeEmergency.id)}
                 />
             )}
         </>

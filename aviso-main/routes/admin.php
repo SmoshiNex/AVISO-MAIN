@@ -43,6 +43,10 @@ Route::middleware('web')->group(function () {
 
         // ── Live Rider Tracking (JSON API for the map) ─────────────────────
         Route::get('/api/trips/active', [\App\Http\Controllers\Admin\TripController::class, 'activeRiders'])->name('trips.active');
+
+        // ── Jarvis TTS — admin SOS alarm (Gemini Charon voice, cached WAV) ─
+        Route::get('/jarvis/sos', [\App\Http\Controllers\Admin\JarvisTtsController::class, 'sos'])->name('jarvis.sos');
+        Route::get('/jarvis/rider-alert', [\App\Http\Controllers\Admin\JarvisTtsController::class, 'riderAlert'])->name('jarvis.rider-alert');
         
         Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');
     });

@@ -7,6 +7,11 @@ export interface User {
     email: string;
     contact_number: string | null;
     address: string | null;
+    street: string | null;
+    barangay_id: string | null;
+    city_id: string | null;
+    province_id: string | null;
+    region_id: string | null;
     role: 'admin' | 'rider' | string;
     created_at: string;
     updated_at?: string;

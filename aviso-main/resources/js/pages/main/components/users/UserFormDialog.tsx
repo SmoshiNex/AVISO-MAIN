@@ -19,6 +19,7 @@ import {
 import { type User } from "@/types/models";
 import { sanitizeText, sanitizeAlphanumeric } from "@/lib/sanitize";
 import { PasswordChecker } from "@/components/ui/PasswordChecker";
+import { AddressFields, type AddressValue } from './AddressFields';
 
 interface UserFormDialogProps {
     isOpen: boolean;
@@ -29,11 +30,17 @@ interface UserFormDialogProps {
     errors: Record<string, string>;
     formData: {
         first_name: string;
+        middle_name: string;
         last_name: string;
         username: string;
         email: string;
         contact_number: string;
         address: string;
+        street: string;
+        province_id: string;
+        city_id: string;
+        barangay_id: string;
+        region_id: string;
         role: string;
         password: string;
         password_confirmation: string;
@@ -53,7 +60,7 @@ export function UserFormDialog({
 }: UserFormDialogProps) {
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
                 <form onSubmit={onSubmit}>
                     <DialogHeader>
                         <DialogTitle>{editingUser ? 'Edit User' : 'Create New User'}</DialogTitle>
@@ -88,6 +95,20 @@ export function UserFormDialog({
                                 />
                                 {errors.last_name && <p className="text-xs text-destructive">{errors.last_name}</p>}
                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="middle_name">
+                                Middle Name <span className="text-muted-foreground font-normal">(Optional)</span>
+                            </Label>
+                            <Input
+                                id="middle_name"
+                                value={formData.middle_name}
+                                onChange={e => setFormData('middle_name', e.target.value)}
+                                onBlur={e => setFormData('middle_name', sanitizeText(e.target.value))}
+                                placeholder="Middle name"
+                            />
+                            {errors.middle_name && <p className="text-xs text-destructive">{errors.middle_name}</p>}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -140,6 +161,18 @@ export function UserFormDialog({
                             />
                             {errors.contact_number && <p className="text-xs text-destructive">{errors.contact_number}</p>}
                         </div>
+
+                        <AddressFields
+                            value={{
+                                street:      formData.street,
+                                province_id: formData.province_id,
+                                city_id:     formData.city_id,
+                                barangay_id: formData.barangay_id,
+                                region_id:   formData.region_id,
+                            }}
+                            onChange={(field, val) => setFormData(field, val)}
+                            errors={errors}
+                        />
 
                         <div className="space-y-2">
                             <Label htmlFor="password">

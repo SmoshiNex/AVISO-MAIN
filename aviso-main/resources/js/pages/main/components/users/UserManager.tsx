@@ -65,24 +65,30 @@ export function UserManager({ users, filters }: UserManagerProps) {
 
     const { data: formData, setData: setFormData, transform, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
         first_name: '',
+        middle_name: '',
         last_name: '',
         username: '',
         email: '',
         contact_number: '',
         address: '',
+        street: '',
+        province_id: '',
+        city_id: '',
+        barangay_id: '',
+        region_id: '',
         role: 'rider',
         password: '',
         password_confirmation: '',
     });
 
-    // Register a transform hook to sanitize data before sending to server
     transform((data) => ({
         ...data,
-        first_name: sanitizeText(data.first_name),
-        last_name: sanitizeText(data.last_name),
-        username: sanitizeAlphanumeric(data.username),
-        contact_number: sanitizeText(data.contact_number),
-        address: sanitizeText(data.address),
+        first_name:      sanitizeText(data.first_name),
+        middle_name:     sanitizeText(data.middle_name),
+        last_name:       sanitizeText(data.last_name),
+        username:        sanitizeAlphanumeric(data.username),
+        contact_number:  sanitizeText(data.contact_number),
+        street:          sanitizeText(data.street),
     }));
 
     const handleFilterChange = (key: 'role', value: string) => {
@@ -116,14 +122,20 @@ export function UserManager({ users, filters }: UserManagerProps) {
         setEditingUser(user);
         clearErrors();
         setFormData({
-            first_name: user.first_name,
-            last_name: user.last_name,
-            username: user.username,
-            email: user.email,
-            contact_number: user.contact_number || '',
-            address: user.address || '',
-            role: user.role,
-            password: '', // Empty unless changing
+            first_name:           user.first_name,
+            middle_name:          user.middle_name || '',
+            last_name:            user.last_name,
+            username:             user.username,
+            email:                user.email,
+            contact_number:       user.contact_number || '',
+            address:              user.address || '',
+            street:               user.street || '',
+            province_id:          user.province_id || '',
+            city_id:              user.city_id || '',
+            barangay_id:          user.barangay_id || '',
+            region_id:            user.region_id || '',
+            role:                 user.role,
+            password:             '',
             password_confirmation: '',
         });
         setIsModalOpen(true);
@@ -224,6 +236,7 @@ export function UserManager({ users, filters }: UserManagerProps) {
                                 <TableHead className="font-semibold">Username</TableHead>
                                 <TableHead className="font-semibold">Email</TableHead>
                                 <TableHead className="font-semibold">Contact</TableHead>
+                                <TableHead className="font-semibold">Address</TableHead>
                                 <TableHead className="font-semibold">Role</TableHead>
                                 <TableHead className="font-semibold">Created At</TableHead>
                                 <TableHead className="font-semibold text-right">Actions</TableHead>
@@ -232,19 +245,22 @@ export function UserManager({ users, filters }: UserManagerProps) {
                         <TableBody>
                             {users.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                         No users found.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 users.data.map((user) => (
                                     <TableRow key={user.id} className="hover:bg-muted/20">
-                                        <TableCell className="font-medium">
-                                            {user.first_name} {user.last_name}
+                                        <TableCell className="font-medium whitespace-nowrap">
+                                            {user.first_name}{user.middle_name ? ` ${user.middle_name}` : ''} {user.last_name}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">@{user.username}</TableCell>
                                         <TableCell>{user.email}</TableCell>
                                         <TableCell className="text-muted-foreground">{user.contact_number || '—'}</TableCell>
+                                        <TableCell className="text-muted-foreground max-w-[180px] truncate" title={user.address || undefined}>
+                                            {user.address || '—'}
+                                        </TableCell>
                                         <TableCell>
                                             <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className={user.role === 'admin' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300'}>
                                                 {user.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <UserCircle className="w-3 h-3 mr-1" />}

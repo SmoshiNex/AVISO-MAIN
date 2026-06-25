@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HazardLog extends Model
 {
@@ -28,6 +29,7 @@ class HazardLog extends Model
 
     // ── Status constants ──────────────────────────────────────────────────────
     const STATUS_ACTIVE   = 'active';
+    const STATUS_RESOLVED = 'resolved';
 
     // ── Area labels (match the groupings in mockHazards.ts) ──────────────────
     const AREAS = [
@@ -55,7 +57,11 @@ class HazardLog extends Model
         'confidence',
         'distance',
         'rider_code',
+        'user_id',
+        'trip_id',
         'status',
+        'resolved_by',
+        'resolved_at',
         'detected_at',
     ];
 
@@ -65,7 +71,25 @@ class HazardLog extends Model
         'confidence'  => 'decimal:2',
         'distance'    => 'decimal:2',
         'detected_at' => 'datetime',
+        'resolved_at' => 'datetime',
     ];
+
+    // ── Relationships ─────────────────────────────────────────────────────────
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function trip(): BelongsTo
+    {
+        return $this->belongsTo(Trip::class);
+    }
+
+    public function resolver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
 
     // ── Query scopes ──────────────────────────────────────────────────────────
 
