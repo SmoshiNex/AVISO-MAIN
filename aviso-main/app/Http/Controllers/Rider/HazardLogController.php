@@ -21,6 +21,13 @@ class HazardLogController extends Controller
         return response()->json($logs);
     }
 
+    public function active(): JsonResponse
+    {
+        $hazards = $this->hazardLogService->getActiveForMap();
+
+        return response()->json($hazards);
+    }
+
     public function store(StoreHazardLogRequest $request): JsonResponse
     {
         $data               = $request->validated();

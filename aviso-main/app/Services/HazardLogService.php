@@ -133,6 +133,13 @@ class HazardLogService
             ->get();
     }
 
+    public function getActiveForMap(): \Illuminate\Database\Eloquent\Collection
+    {
+        return HazardLog::active()
+            ->orderBy('detected_at', 'desc')
+            ->get(['id', 'type', 'area', 'latitude', 'longitude', 'confidence', 'distance', 'rider_code', 'detected_at']);
+    }
+
     public function toCsvResponse(array $filters): StreamedResponse
     {
         $logs = $this->getExportLogs($filters);
