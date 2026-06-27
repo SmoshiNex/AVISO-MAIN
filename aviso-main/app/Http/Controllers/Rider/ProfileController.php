@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Rider;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Rider\UpdatePersonalInfoRequest;
 use App\Http\Requests\Rider\UpdateProfileRequest;
+use App\Http\Requests\Rider\UploadAvatarRequest;
+use App\Services\SecureFileUploader;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
-    public function __construct(protected UserService $userService) {}
+    public function __construct(
+        protected UserService $userService,
+        protected SecureFileUploader $fileUploader,
+    ) {}
 
     public function update(UpdateProfileRequest $request): JsonResponse
     {
@@ -31,23 +35,26 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function uploadAvatar(Request $request): JsonResponse
+    public function updatePersonalInfo(UpdatePersonalInfoRequest $request): JsonResponse
     {
-        $request->validate([
-            'avatar' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-        ]);
-
-        $user      = Auth::user();
-        $extension = $request->file('avatar')->extension();
-
-        $path = $request->file('avatar')->storeAs(
-            'avatars', $user->id . '.' . $extension, 'public'
-        );
-
-        $user->update(['avatar_path' => $path]);
+        $user = Auth::user();
+        $user->update($request->validated());
+        $user->refresh();
 
         return response()->json([
-            'avatar_url' => url(Storage::disk('public')->url($path)),
+            'first_name'     => $user->first_name,
+            'last_name'      => $user->last_name,
+            'email'          => $user->email,
+            'contact_number' => $user->contact_number,
         ]);
+    }
+
+    public function uploadAvatar(UploadAvatarRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+        $path = $this->fileUploader->upload($request->file('avatar'), 'rider_avatars');
+        $user->update(['avatar_path' => $path]);
+
+        return response()->json(['avatar_url' => $user->avatar_url]);
     }
 }

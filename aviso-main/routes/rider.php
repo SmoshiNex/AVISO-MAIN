@@ -63,8 +63,9 @@ Route::prefix('rider')->group(function () {
         Route::delete('/emergency-contacts/{contact}',[EmergencyContactController::class, 'destroy']);
 
         // ── Rider profile ──────────────────────────────────────────────────────
-        Route::patch('/profile',        [ProfileController::class, 'update']);
-        Route::post('/profile/avatar',  [ProfileController::class, 'uploadAvatar']);
+        Route::patch('/profile',          [ProfileController::class, 'update']);
+        Route::patch('/profile/personal', [ProfileController::class, 'updatePersonalInfo']);
+        Route::post('/profile/avatar',    [ProfileController::class, 'uploadAvatar']);
 
         // ── Text-to-speech proxy (OpenAI key stays server-side, never in mobile bundle) ──
         Route::post('/tts', [TtsController::class, 'speak']);
