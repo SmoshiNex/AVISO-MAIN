@@ -8,7 +8,6 @@ use App\Models\PasswordResetOtp;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 
 class RiderAuthService
 {
@@ -36,9 +35,7 @@ class RiderAuthService
                 'email'          => $user->email,
                 'contact_number' => $user->contact_number,
                 'username'       => $user->username,
-                'avatar_url'     => $user->avatar_path
-                    ? url(Storage::disk('public')->url($user->avatar_path))
-                    : null,
+                'avatar_url'     => $user->avatar_url,
             ],
         ];
     }
@@ -109,9 +106,7 @@ class RiderAuthService
                 'email'          => $user->email,
                 'contact_number' => $user->contact_number,
                 'username'       => $user->username,
-                'avatar_url'     => $user->avatar_path
-                    ? url(Storage::disk('public')->url($user->avatar_path))
-                    : null,
+                'avatar_url'     => $user->avatar_url,
             ],
         ];
     }
