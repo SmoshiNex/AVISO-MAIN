@@ -24,7 +24,9 @@ export function HazardStats({ totalHazards, types, stats }: HazardStatsProps) {
                 return <Cone className="w-4 h-4" />;
             case "Traffic Sign":
                 return <MapPin className="w-4 h-4" />;
-            case "Traffic Light":
+            case "Traffic Light Red":
+            case "Traffic Light Orange":
+            case "Traffic Light Green":
                 return <StopCircle className="w-4 h-4" />;
             default:
                 return <AlertCircle className="w-4 h-4" />;
@@ -41,7 +43,11 @@ export function HazardStats({ totalHazards, types, stats }: HazardStatsProps) {
                 return "text-yellow-600 bg-yellow-100 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-900";
             case "Traffic Sign":
                 return "text-blue-600 bg-blue-100 border-blue-200 dark:bg-blue-900/30 dark:border-blue-900";
-            case "Traffic Light":
+            case "Traffic Light Red":
+                return "text-red-600 bg-red-100 border-red-200 dark:bg-red-900/30 dark:border-red-900";
+            case "Traffic Light Orange":
+                return "text-orange-600 bg-orange-100 border-orange-200 dark:bg-orange-900/30 dark:border-orange-900";
+            case "Traffic Light Green":
                 return "text-green-600 bg-green-100 border-green-200 dark:bg-green-900/30 dark:border-green-900";
             default:
                 return "text-gray-600 bg-gray-100 border-gray-200";

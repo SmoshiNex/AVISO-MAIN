@@ -5,13 +5,16 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Yajra\Address\HasAddress;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasAddress, HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -26,8 +29,14 @@ class User extends Authenticatable
         'email',
         'contact_number',
         'address',
+        'avatar_path',
         'password',
         'role',
+        'street',
+        'barangay_id',
+        'city_id',
+        'province_id',
+        'region_id',
     ];
 
     /**
@@ -53,11 +62,18 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Get the emergency contacts for the user.
-     */
-    public function emergencyContacts()
+    public function emergencyContacts(): HasMany
     {
         return $this->hasMany(EmergencyContact::class);
+    }
+
+    public function trips(): HasMany
+    {
+        return $this->hasMany(Trip::class);
+    }
+
+    public function hazardLogs(): HasMany
+    {
+        return $this->hasMany(HazardLog::class);
     }
 }

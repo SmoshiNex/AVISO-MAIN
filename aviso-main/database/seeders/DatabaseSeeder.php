@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RiderSeeder::class,
             HazardLogSeeder::class,
+            TripSeeder::class,
         ]);
     }
 }

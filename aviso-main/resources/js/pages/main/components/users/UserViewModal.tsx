@@ -118,7 +118,9 @@ export function UserViewModal({ user, isOpen, onClose }: UserViewModalProps) {
                     <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/20 border">
                         <div className="flex-1 space-y-1">
                             <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-lg">{user.first_name} {user.last_name}</h3>
+                                <h3 className="font-semibold text-lg">
+                                {user.first_name}{user.middle_name ? ` ${user.middle_name}` : ''} {user.last_name}
+                            </h3>
                                 <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className={user.role === 'admin' ? 'bg-purple-600' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'}>
                                     {user.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <UserCircle className="w-3 h-3 mr-1" />}
                                     {user.role.charAt(0).toUpperCase() + user.role.slice(1)}

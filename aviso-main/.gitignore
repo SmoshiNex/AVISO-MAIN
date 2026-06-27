@@ -22,3 +22,14 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Claude AI — session files, plans, memory, skill cache
+/.claude/
+
+# Local Claude instruction files (machine-specific)
+CLAUDE.md
+AGENTS.md
+
+# Local env variants not tracked
+.env.local
+.env.testing

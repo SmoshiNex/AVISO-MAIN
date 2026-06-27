@@ -11,28 +11,30 @@ use Inertia\Response;
 
 class HazardLogsController extends Controller
 {
-    protected $hazardLogService;
-
-    public function __construct(HazardLogService $hazardLogService)
+    public function __construct(private HazardLogService $hazardLogService)
     {
-        $this->hazardLogService = $hazardLogService;
     }
 
-    /**
-     * Display the paginated, filterable Hazard Logs page.
-     */
-    public function index(Request $request): Response
+    public function index(Request $request)
     {
         $filters = $request->only(['search', 'type', 'area', 'status', 'sort', 'per_page']);
 
+        if ($request->input('export') === 'csv') {
+            return $this->hazardLogService->toCsvResponse($filters);
+        }
+
+        if ($request->input('export') === 'pdf') {
+            return $this->hazardLogService->toPdfResponse($filters);
+        }
+
         $paginated = $this->hazardLogService->getPaginatedAdminLogs($filters);
-        $stats = $this->hazardLogService->getAdminStats();
+        $stats     = $this->hazardLogService->getAdminStats($filters);
 
         return Inertia::render('main/HazardLogs', array_merge([
-            'hazards'    => $paginated,
-            'filters'    => $filters,
-            'types'      => HazardLog::TYPES,
-            'areas'      => HazardLog::AREAS,
+            'hazards' => $paginated,
+            'filters' => $filters,
+            'types'   => HazardLog::TYPES,
+            'areas'   => HazardLog::AREAS,
         ], $stats));
     }
 }

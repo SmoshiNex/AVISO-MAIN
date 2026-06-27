@@ -1,7 +1,8 @@
 import { Head, Link, useForm } from "@inertiajs/react";
 import { FormEventHandler, useState } from "react";
 import { toast } from "@/lib/toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,9 +68,10 @@ export default function Login({
 
                 <CardContent>
                     {status && (
-                        <div className="mb-4 text-sm font-medium text-green-600 bg-green-50 p-3 rounded-md border border-green-200">
-                            {status}
-                        </div>
+                        <Alert className="mb-4 border-primary/30 bg-primary/10 text-primary [&>svg]:text-primary">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <AlertDescription>{status}</AlertDescription>
+                        </Alert>
                     )}
 
                     <form onSubmit={submit} className="space-y-4">

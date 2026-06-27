@@ -15,12 +15,20 @@ Route::middleware('web')->group(function () {
 
         Route::get('/map', function () {
             $activeHazards = \App\Models\HazardLog::where('status', 'active')->get();
+            $settings = \App\Models\SystemSetting::instance();
             return Inertia::render('main/MapPage', [
-                'hazards' => $activeHazards
+                'hazards'               => $activeHazards,
+                'emergencyHazardTypes'  => $settings->emergency_hazard_types,
             ]);
         })->name('map');
         
         Route::get('/hazards', [\App\Http\Controllers\Admin\HazardLogsController::class, 'index'])->name('hazards.index');
+
+        // Settings
+        Route::get('/settings', [\App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings/profile', [\App\Http\Controllers\Admin\SettingsController::class, 'updateProfile'])->name('settings.profile');
+        Route::post('/settings/password', [\App\Http\Controllers\Admin\SettingsController::class, 'updatePassword'])->name('settings.password');
+        Route::post('/settings/system', [\App\Http\Controllers\Admin\SettingsController::class, 'updateSystem'])->name('settings.system');
         
         // Users Management
         Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
@@ -35,6 +43,10 @@ Route::middleware('web')->group(function () {
 
         // ── Live Rider Tracking (JSON API for the map) ─────────────────────
         Route::get('/api/trips/active', [\App\Http\Controllers\Admin\TripController::class, 'activeRiders'])->name('trips.active');
+
+        // ── Jarvis TTS — admin SOS alarm (Gemini Charon voice, cached WAV) ─
+        Route::get('/jarvis/sos', [\App\Http\Controllers\Admin\JarvisTtsController::class, 'sos'])->name('jarvis.sos');
+        Route::get('/jarvis/rider-alert', [\App\Http\Controllers\Admin\JarvisTtsController::class, 'riderAlert'])->name('jarvis.rider-alert');
         
         Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');
     });

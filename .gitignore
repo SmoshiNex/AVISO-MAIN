@@ -1,1 +1,29 @@
+# Mobile app — tracked in its own separate repo
 aviso-mobile/
+
+# Claude AI — session files, plans, memory, skill cache
+.claude/
+
+# Local Claude instruction files (machine-specific)
+CLAUDE.md
+AGENTS.md
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (workspace root — concurrently dev tooling)
+node_modules/
+package-lock.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -1,14 +1,28 @@
 export interface User {
     id: number;
     first_name: string;
+    middle_name?: string | null;
     last_name: string;
     username: string;
     email: string;
     contact_number: string | null;
     address: string | null;
+    street: string | null;
+    barangay_id: string | null;
+    city_id: string | null;
+    province_id: string | null;
+    region_id: string | null;
     role: 'admin' | 'rider' | string;
     created_at: string;
     updated_at?: string;
+}
+
+export interface SystemSetting {
+    id: number;
+    confidence_threshold: number;
+    items_per_page: number;
+    default_sort: string;
+    emergency_hazard_types: string[];
 }
 
 export interface HazardLog {

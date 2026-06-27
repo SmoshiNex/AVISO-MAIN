@@ -2,26 +2,42 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useMap } from '@/components/ui/map';
 import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function SearchBox() {
     const { map } = useMap();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<any[]>([]);
 
-    const handleSearch = async (e: React.FormEvent) => {
+    useEffect(() => {
+        if (!query.trim()) {
+            setResults([]);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            const token = import.meta.env.VITE_MAPBOX_TOKEN;
+            // Bounding box for Zamboanga City approx: 121.9,6.8,122.3,7.2
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?bbox=121.9,6.8,122.3,7.2&access_token=${token}`;
+            
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                // Only show results if query still matches what they typed
+                setResults(data.features || []);
+            } catch (err) {
+                console.error(err);
+            }
+        }, 350); // 350ms debounce delay
+
+        return () => clearTimeout(timer);
+    }, [query]);
+
+    const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!query.trim()) return;
-        const token = import.meta.env.VITE_MAPBOX_TOKEN;
-        // Bounding box for Zamboanga City approx: 121.9,6.8,122.3,7.2
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?bbox=121.9,6.8,122.3,7.2&access_token=${token}`;
-        
-        try {
-            const res = await fetch(url);
-            const data = await res.json();
-            setResults(data.features || []);
-        } catch (err) {
-            console.error(err);
+        // Pressing enter flies to the top result automatically
+        if (results.length > 0) {
+            flyTo(results[0]);
         }
     };
 
