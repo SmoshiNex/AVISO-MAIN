@@ -41,6 +41,9 @@ Route::prefix('rider')->group(function () {
         Route::get('/hazard-logs',  [HazardLogController::class, 'index']);
         Route::post('/hazard-logs', [HazardLogController::class, 'store']);
 
+        // ── All active hazards (community map layer — same data admin sees) ────
+        Route::get('/hazards', [HazardLogController::class, 'active']);
+
         // ── Trip tracking ──────────────────────────────────────────────────────
         Route::post('/trips',                    [TripController::class, 'start']);
         Route::put('/trips/{trip}/location',     [TripController::class, 'updateLocation']);
