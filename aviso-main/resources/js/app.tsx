@@ -13,10 +13,27 @@ import { Toaster } from 'sileo';
 import 'sileo/styles.css';
 import { router } from '@inertiajs/react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { toast } from '@/lib/toast';
+import { useTheme } from 'next-themes';
 
 import { usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
+
+function ThemedToaster() {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
+    return (
+        <Toaster
+            position="top-center"
+            theme={isDark ? 'light' : 'dark'}
+            options={{
+                roundness: 16,
+                fill: isDark ? '#ffffff' : '#09090b',
+            }}
+        />
+    );
+}
 
 const appName = import.meta.env.VITE_APP_NAME || 'AVISO';
 
@@ -45,15 +62,10 @@ createInertiaApp({
 
         root.render(
             <ErrorBoundary>
-                <Toaster
-                    position="top-center"
-                    theme="dark"
-                    options={{
-                        roundness: 16,
-                        fill: '#09090b',
-                    }}
-                />
-                <App {...props} />
+                <ThemeProvider>
+                    <ThemedToaster />
+                    <App {...props} />
+                </ThemeProvider>
             </ErrorBoundary>
         );
     },

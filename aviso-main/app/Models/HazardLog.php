@@ -4,26 +4,32 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HazardLog extends Model
 {
     // ── Type constants ────────────────────────────────────────────────────────
-    const TYPE_POTHOLE          = 'Pothole';
-    const TYPE_ROAD_EXCAVATION  = 'Road Excavation';
-    const TYPE_ROAD_BARRIER     = 'Road Barrier';
-    const TYPE_TRAFFIC_SIGN     = 'Traffic Sign';
-    const TYPE_TRAFFIC_LIGHT    = 'Traffic Light';
+    const TYPE_POTHOLE               = 'Pothole';
+    const TYPE_ROAD_EXCAVATION       = 'Road Excavation';
+    const TYPE_ROAD_BARRIER          = 'Road Barrier';
+    const TYPE_TRAFFIC_SIGN          = 'Traffic Sign';
+    const TYPE_TRAFFIC_LIGHT_RED     = 'Traffic Light Red';
+    const TYPE_TRAFFIC_LIGHT_ORANGE  = 'Traffic Light Orange';
+    const TYPE_TRAFFIC_LIGHT_GREEN   = 'Traffic Light Green';
 
     const TYPES = [
         self::TYPE_POTHOLE,
         self::TYPE_ROAD_EXCAVATION,
         self::TYPE_ROAD_BARRIER,
         self::TYPE_TRAFFIC_SIGN,
-        self::TYPE_TRAFFIC_LIGHT,
+        self::TYPE_TRAFFIC_LIGHT_RED,
+        self::TYPE_TRAFFIC_LIGHT_ORANGE,
+        self::TYPE_TRAFFIC_LIGHT_GREEN,
     ];
 
     // ── Status constants ──────────────────────────────────────────────────────
     const STATUS_ACTIVE   = 'active';
+    const STATUS_RESOLVED = 'resolved';
 
     // ── Area labels (match the groupings in mockHazards.ts) ──────────────────
     const AREAS = [
@@ -51,7 +57,11 @@ class HazardLog extends Model
         'confidence',
         'distance',
         'rider_code',
+        'user_id',
+        'trip_id',
         'status',
+        'resolved_by',
+        'resolved_at',
         'detected_at',
     ];
 
@@ -61,7 +71,25 @@ class HazardLog extends Model
         'confidence'  => 'decimal:2',
         'distance'    => 'decimal:2',
         'detected_at' => 'datetime',
+        'resolved_at' => 'datetime',
     ];
+
+    // ── Relationships ─────────────────────────────────────────────────────────
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function trip(): BelongsTo
+    {
+        return $this->belongsTo(Trip::class);
+    }
+
+    public function resolver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
 
     // ── Query scopes ──────────────────────────────────────────────────────────
 

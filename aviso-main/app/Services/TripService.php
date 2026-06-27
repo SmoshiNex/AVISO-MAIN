@@ -5,19 +5,14 @@ namespace App\Services;
 use App\Events\RiderLocationUpdated;
 use App\Models\Trip;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class TripService
 {
-    /**
-     * Start a new trip for a rider.
-     *
-     * Creates an active trip record using the rider's current location as
-     * both the start and current position. The current_lat/lng will be
-     * updated continuously while the trip is in progress.
-     */
     public function startTrip(array $data): Trip
     {
         $trip = Trip::create([
+            'user_id'     => $data['user_id'] ?? null,
             'rider_code'  => $data['rider_code'],
             'start_lat'   => $data['latitude'],
             'start_lng'   => $data['longitude'],
@@ -27,61 +22,102 @@ class TripService
             'started_at'  => now(),
         ]);
 
-        // Broadcast the rider's initial position so the admin map
-        // shows the pin immediately when the rider starts their trip.
         broadcast(new RiderLocationUpdated($trip));
 
         return $trip;
     }
 
-    /**
-     * Update the rider's current live position.
-     *
-     * Called repeatedly by the rider's device while a trip is active.
-     * Only updates the current coordinates, leaving start/end untouched.
-     */
     public function updateLocation(Trip $trip, float $lat, float $lng): bool
     {
+        if ($trip->status !== Trip::STATUS_ACTIVE) {
+            throw new \RuntimeException('Cannot update location of a trip that has already ended.');
+        }
+
+        $waypoints   = $trip->route_points ?? [];
+        $waypoints[] = ['lat' => $lat, 'lng' => $lng, 'ts' => now()->toISOString()];
+
         $updated = $trip->update([
-            'current_lat' => $lat,
-            'current_lng' => $lng,
+            'current_lat'  => $lat,
+            'current_lng'  => $lng,
+            'route_points' => $waypoints,
         ]);
 
-        // Push the new position to all admin map clients via Reverb.
-        // This fires every time the rider's device sends a location update.
         broadcast(new RiderLocationUpdated($trip->fresh()));
 
         return $updated;
     }
 
-    /**
-     * End a trip and record the final destination coordinates.
-     *
-     * Sets the end coordinates and marks the trip as ended with a timestamp.
-     * The start and route history remain intact for reference.
-     */
     public function endTrip(Trip $trip, float $lat, float $lng): bool
     {
+        if ($trip->status !== Trip::STATUS_ACTIVE) {
+            throw new \RuntimeException('This trip has already ended.');
+        }
+
+        $waypoints   = $trip->route_points ?? [];
+        $waypoints[] = ['lat' => $lat, 'lng' => $lng, 'ts' => now()->toISOString()];
+
+        $endedAt         = now();
+        $distanceKm      = $this->computeDistanceKm($waypoints);
+        $durationMinutes = (int) $trip->started_at->diffInMinutes($endedAt);
+
         return $trip->update([
-            'current_lat' => $lat,
-            'current_lng' => $lng,
-            'end_lat'     => $lat,
-            'end_lng'     => $lng,
-            'status'      => Trip::STATUS_ENDED,
-            'ended_at'    => now(),
+            'current_lat'       => $lat,
+            'current_lng'       => $lng,
+            'end_lat'           => $lat,
+            'end_lng'           => $lng,
+            'route_points'      => $waypoints,
+            'status'            => Trip::STATUS_ENDED,
+            'ended_at'          => $endedAt,
+            'total_distance_km' => $distanceKm,
+            'duration_minutes'  => $durationMinutes,
         ]);
     }
 
-    /**
-     * Get all currently active trips for the admin live map.
-     *
-     * Returns trips ordered by most recently started so the map
-     * can display the freshest riders first.
-     */
     public function getActiveTrips(): Collection
     {
         return Trip::active()
             ->orderBy('started_at', 'desc')
             ->get();
+    }
+
+    public function getRiderHistory(string $riderCode): LengthAwarePaginator
+    {
+        return Trip::where('status', Trip::STATUS_ENDED)
+            ->byRider($riderCode)
+            ->orderBy('started_at', 'desc')
+            ->paginate(20, ['id', 'rider_code', 'start_lat', 'start_lng', 'end_lat', 'end_lng', 'started_at', 'ended_at', 'total_distance_km', 'duration_minutes']);
+    }
+
+    public function getTripWithHazards(Trip $trip): array
+    {
+        $hazards = $trip->hazardLogs()
+            ->orderBy('detected_at')
+            ->get(['id', 'haz_code', 'type', 'area', 'latitude', 'longitude', 'confidence', 'detected_at']);
+
+        return [
+            'trip'    => $trip,
+            'hazards' => $hazards,
+        ];
+    }
+
+    private function computeDistanceKm(array $routePoints): float
+    {
+        $total = 0.0;
+        $count = count($routePoints);
+
+        for ($i = 1; $i < $count; $i++) {
+            $lat1 = deg2rad((float) $routePoints[$i - 1]['lat']);
+            $lng1 = deg2rad((float) $routePoints[$i - 1]['lng']);
+            $lat2 = deg2rad((float) $routePoints[$i]['lat']);
+            $lng2 = deg2rad((float) $routePoints[$i]['lng']);
+
+            $dlat = $lat2 - $lat1;
+            $dlng = $lng2 - $lng1;
+
+            $a = sin($dlat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dlng / 2) ** 2;
+            $total += 2 * asin(sqrt($a)) * 6371;
+        }
+
+        return round($total, 3);
     }
 }

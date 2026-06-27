@@ -42,11 +42,13 @@ class DashboardService
             ->get();
         
         $typeMapping = [
-            'Pothole' => 'Potholes',
-            'Road Excavation' => 'Road Excavation',
-            'Road Barrier' => 'Road Barriers',
-            'Traffic Sign' => 'Traffic Signs',
-            'Traffic Light' => 'Traffic Light (Red)',
+            'Pothole'              => 'Potholes',
+            'Road Excavation'      => 'Road Excavation',
+            'Road Barrier'         => 'Road Barriers',
+            'Traffic Sign'         => 'Traffic Signs',
+            'Traffic Light Red'    => 'TL Red',
+            'Traffic Light Orange' => 'TL Orange',
+            'Traffic Light Green'  => 'TL Green',
         ];
 
         $hazardTypesData = collect($typeMapping)->map(function ($chartName, $dbType) use ($hazardTypesDataRaw) {
@@ -59,11 +61,13 @@ class DashboardService
 
         // 3. Detection Accuracy by Type (Bar)
         $accuracyMapping = [
-            'Pothole' => 'Pothole',
-            'Road Excavation' => 'Excavation',
-            'Road Barrier' => 'Barriers',
-            'Traffic Sign' => 'Signs',
-            'Traffic Light' => 'TL Red',
+            'Pothole'              => 'Pothole',
+            'Road Excavation'      => 'Excavation',
+            'Road Barrier'         => 'Barriers',
+            'Traffic Sign'         => 'Signs',
+            'Traffic Light Red'    => 'TL Red',
+            'Traffic Light Orange' => 'TL Orange',
+            'Traffic Light Green'  => 'TL Green',
         ];
 
         $detectionAccuracyDataRaw = HazardLog::select('type', DB::raw('AVG(confidence) as accuracy'))
@@ -100,10 +104,10 @@ class DashboardService
                 'potholes' => $dayData->where('type', 'Pothole')->sum('count'),
                 'roadExcavation' => $dayData->where('type', 'Road Excavation')->sum('count'),
                 'roadBarriers' => $dayData->where('type', 'Road Barrier')->sum('count'),
-                'trafficSigns' => $dayData->where('type', 'Traffic Sign')->sum('count'),
-                'trafficLightRed' => $dayData->where('type', 'Traffic Light')->sum('count'),
-                'trafficLightGreen' => 0,
-                'trafficLightOrange' => 0,
+                'trafficSigns'       => $dayData->where('type', 'Traffic Sign')->sum('count'),
+                'trafficLightRed'    => $dayData->where('type', 'Traffic Light Red')->sum('count'),
+                'trafficLightOrange' => $dayData->where('type', 'Traffic Light Orange')->sum('count'),
+                'trafficLightGreen'  => $dayData->where('type', 'Traffic Light Green')->sum('count'),
             ];
         })->toArray();
 

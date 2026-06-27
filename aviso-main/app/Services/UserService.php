@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
@@ -71,18 +72,14 @@ class UserService
         ];
     }
 
-    /**
-     * Create a new user.
-     */
     public function createUser(array $data): User
     {
-        $data['password'] = Hash::make($data['password']);
+        $data['password']          = Hash::make($data['password']);
+        $data['email_verified_at'] = now();
+        $data = $this->computeAddress($data);
         return User::create($data);
     }
 
-    /**
-     * Update an existing user.
-     */
     public function updateUser(User $user, array $data): bool
     {
         if (!empty($data['password'])) {
@@ -90,8 +87,27 @@ class UserService
         } else {
             unset($data['password']);
         }
-
+        $data = $this->computeAddress($data);
         return $user->update($data);
+    }
+
+    private function computeAddress(array $data): array
+    {
+        if (empty($data['barangay_id'])) {
+            return $data;
+        }
+        $barangayName = DB::table('barangays')->where('code', $data['barangay_id'])->value('name');
+        if (!$barangayName) {
+            return $data;
+        }
+        $parts = [];
+        if (!empty($data['street'])) {
+            $parts[] = $data['street'];
+        }
+        $parts[]        = 'Brgy. ' . $barangayName;
+        $parts[]        = 'Zamboanga City';
+        $data['address'] = implode(', ', $parts);
+        return $data;
     }
 
     /**

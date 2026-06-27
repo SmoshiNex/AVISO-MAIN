@@ -23,15 +23,15 @@ import {
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 const navGroups = [
     {
         title: "TRACKING & LOGS",
@@ -63,7 +63,7 @@ const navGroups = [
         items: [
             {
                 title: "Settings",
-                url: "#",
+                url: "/settings",
                 icon: Settings,
             },
         ],
@@ -188,33 +188,25 @@ export default function AdminSidebar() {
                 </SidebarMenu>
             </SidebarFooter>
 
-            <Dialog
-                open={isLogoutModalOpen}
-                onOpenChange={setIsLogoutModalOpen}
-            >
-                <DialogContent className="sm:max-w-[400px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-destructive">
-                            Log Out
-                        </DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to end your session and log
-                            out of the admin portal?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="mt-4">
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsLogoutModalOpen(false)}
+            <AlertDialog open={isLogoutModalOpen} onOpenChange={setIsLogoutModalOpen}>
+                <AlertDialogContent className="sm:max-w-[400px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-destructive">Log Out</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to end your session and log out of the admin portal?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={executeLogout}
+                            className="bg-destructive text-white hover:bg-destructive/90"
                         >
-                            Cancel
-                        </Button>
-                        <Button variant="destructive" onClick={executeLogout}>
                             Log Out
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Sidebar>
     );
 }
