@@ -179,6 +179,9 @@ export function HazardTable({
                                 Distance
                             </TableHead>
                             <TableHead className="font-semibold">
+                                Coordinates
+                            </TableHead>
+                            <TableHead className="font-semibold">
                                 Rider
                             </TableHead>
                             <TableHead className="font-semibold">
@@ -191,7 +194,7 @@ export function HazardTable({
                         {hazards.data.length === 0 ? (
                             <TableRow>
                                 <TableCell
-                                    colSpan={7}
+                                    colSpan={8}
                                     className="h-32 text-center text-muted-foreground"
                                 >
                                     No hazards found matching your filters.
@@ -231,6 +234,9 @@ export function HazardTable({
                                     </TableCell>
                                     <TableCell className="text-sm font-mono text-muted-foreground">
                                         {hazard.distance}m
+                                    </TableCell>
+                                    <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                                        {Number(hazard.latitude).toFixed(5)}, {Number(hazard.longitude).toFixed(5)}
                                     </TableCell>
                                     <TableCell className="text-sm">
                                         {hazard.rider_code}
