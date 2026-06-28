@@ -41,6 +41,9 @@ Route::prefix('rider')->group(function () {
         Route::get('/hazard-logs',  [HazardLogController::class, 'index']);
         Route::post('/hazard-logs', [HazardLogController::class, 'store']);
 
+        // ── All active hazards (community map layer — same data admin sees) ────
+        Route::get('/hazards', [HazardLogController::class, 'active']);
+
         // ── Trip tracking ──────────────────────────────────────────────────────
         Route::post('/trips',                    [TripController::class, 'start']);
         Route::put('/trips/{trip}/location',     [TripController::class, 'updateLocation']);
@@ -60,8 +63,9 @@ Route::prefix('rider')->group(function () {
         Route::delete('/emergency-contacts/{contact}',[EmergencyContactController::class, 'destroy']);
 
         // ── Rider profile ──────────────────────────────────────────────────────
-        Route::patch('/profile',        [ProfileController::class, 'update']);
-        Route::post('/profile/avatar',  [ProfileController::class, 'uploadAvatar']);
+        Route::patch('/profile',          [ProfileController::class, 'update']);
+        Route::patch('/profile/personal', [ProfileController::class, 'updatePersonalInfo']);
+        Route::post('/profile/avatar',    [ProfileController::class, 'uploadAvatar']);
 
         // ── Text-to-speech proxy (OpenAI key stays server-side, never in mobile bundle) ──
         Route::post('/tts', [TtsController::class, 'speak']);
