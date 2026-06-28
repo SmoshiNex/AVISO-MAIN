@@ -90,6 +90,27 @@ class HazardLogService
 
     public function processIncomingHazard(array $data): HazardLog
     {
+        $detectedAt = isset($data['detected_at'])
+            ? \Carbon\Carbon::parse($data['detected_at'])
+            : now();
+
+        // Idempotency: same rider + type within ±5s → return existing record.
+        // Prevents duplicates from batch-sync re-sends and the rare race where
+        // the immediate POST and the 30s batch sync both reach the server.
+        // Safe with the mobile LOG_COOLDOWN of 8s: legitimate new detections are
+        // always ≥8s apart, leaving a 3s gap between idempotency windows.
+        $existing = HazardLog::where('user_id', $data['user_id'])
+            ->where('type', $data['type'])
+            ->whereBetween('detected_at', [
+                $detectedAt->copy()->subSeconds(5),
+                $detectedAt->copy()->addSeconds(5),
+            ])
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
         $data['area'] = $this->resolveArea(
             (float) $data['latitude'],
             (float) $data['longitude']
@@ -105,7 +126,7 @@ class HazardLogService
         }
         $data['haz_code']    = $prefix . strtoupper(Str::random(6));
         $data['status']      = HazardLog::STATUS_ACTIVE;
-        $data['detected_at'] = $data['detected_at'] ?? now();
+        $data['detected_at'] = $detectedAt;
 
         if (!empty($data['rider_code'])) {
             $activeTrip = Trip::active()->byRider($data['rider_code'])->first();
@@ -128,8 +149,9 @@ class HazardLogService
 
     public function getRiderLogs(): \Illuminate\Database\Eloquent\Collection
     {
-        return HazardLog::orderBy('detected_at', 'desc')
-            ->limit(200)
+        return HazardLog::where('user_id', Auth::id())
+            ->orderBy('detected_at', 'desc')
+            ->limit(500)
             ->get();
     }
 

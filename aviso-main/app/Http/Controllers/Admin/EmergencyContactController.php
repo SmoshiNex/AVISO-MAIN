@@ -3,54 +3,44 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreEmergencyContactRequest;
 use App\Models\EmergencyContact;
 use App\Models\User;
+use App\Services\EmergencyContactService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class EmergencyContactController extends Controller
 {
-    /**
-     * Display a listing of the user's emergency contacts.
-     */
+    public function __construct(
+        protected EmergencyContactService $emergencyContactService,
+    ) {}
+
     public function index(User $user): JsonResponse
     {
         return response()->json([
-            'success' => true,
-            'contacts' => $user->emergencyContacts()->orderBy('created_at', 'desc')->get()
+            'success'  => true,
+            'contacts' => $this->emergencyContactService->getForRider($user),
         ]);
     }
 
-    /**
-     * Store a newly created emergency contact in storage.
-     */
-    public function store(Request $request, User $user): JsonResponse
+    public function store(StoreEmergencyContactRequest $request, User $user): JsonResponse
     {
-        $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'relationship'   => 'nullable|string|max:255',
-            'contact_number' => 'required|string|max:20',
-        ]);
-
-        $contact = $user->emergencyContacts()->create($validated);
+        $contact = $this->emergencyContactService->create($user, $request->validated());
 
         return response()->json([
             'success' => true,
             'message' => 'Emergency contact added successfully.',
-            'contact' => $contact
+            'contact' => $contact,
         ], 201);
     }
 
-    /**
-     * Remove the specified emergency contact from storage.
-     */
     public function destroy(EmergencyContact $contact): JsonResponse
     {
-        $contact->delete();
+        $this->emergencyContactService->delete($contact);
 
         return response()->json([
             'success' => true,
-            'message' => 'Emergency contact deleted successfully.'
+            'message' => 'Emergency contact deleted successfully.',
         ]);
     }
 }

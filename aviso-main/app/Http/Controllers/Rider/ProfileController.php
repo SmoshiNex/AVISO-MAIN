@@ -38,7 +38,7 @@ class ProfileController extends Controller
     public function updatePersonalInfo(UpdatePersonalInfoRequest $request): JsonResponse
     {
         $user = Auth::user();
-        $user->update($request->validated());
+        $this->userService->updateUser($user, $request->validated());
         $user->refresh();
 
         return response()->json([
@@ -53,7 +53,7 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $path = $this->fileUploader->upload($request->file('avatar'), 'rider_avatars');
-        $user->update(['avatar_path' => $path]);
+        $this->userService->updateAvatar($user, $path);
 
         return response()->json(['avatar_url' => $user->avatar_url]);
     }
