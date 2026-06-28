@@ -233,7 +233,7 @@ export function HazardTable({
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-sm font-mono text-muted-foreground">
-                                        {hazard.distance}m
+                                        {hazard.distance != null ? `${hazard.distance}m` : '-'}
                                     </TableCell>
                                     <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                                         {Number(hazard.latitude).toFixed(5)}, {Number(hazard.longitude).toFixed(5)}

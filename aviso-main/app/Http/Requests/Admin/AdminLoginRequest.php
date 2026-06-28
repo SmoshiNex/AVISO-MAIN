@@ -49,6 +49,16 @@ class AdminLoginRequest extends FormRequest
             ]);
         }
 
+        // Reject non-admin users — log them out and surface the same generic error
+        if (Auth::user()->role !== 'admin') {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'username' => trans('auth.failed'),
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

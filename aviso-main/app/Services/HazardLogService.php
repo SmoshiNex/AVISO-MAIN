@@ -135,6 +135,10 @@ class HazardLogService
             }
         }
 
+        if (isset($data['confidence']) && $data['confidence'] <= 1) {
+            $data['confidence'] = $data['confidence'] * 100;
+        }
+
         return HazardLog::create($data);
     }
 

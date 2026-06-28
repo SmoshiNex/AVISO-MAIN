@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\PasswordResetController;
+use App\Http\Middleware\RequireAdminRole;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -9,8 +10,8 @@ Route::middleware('web')->group(function () {
     // Redirect root to login
     Route::redirect('/', '/login');
 
-    // Admin Dashboard (Protected by session auth)
-    Route::middleware('auth')->group(function () {
+    // Admin Dashboard (Protected by session auth + admin role check)
+    Route::middleware(['auth', RequireAdminRole::class])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/map', function () {

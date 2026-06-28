@@ -35,7 +35,7 @@ return new class extends Migration
             $table->decimal('confidence', 5, 2)->default(0);
 
             // Distance in metres from the edge device to the hazard at time of detection
-            $table->decimal('distance', 8, 2)->default(0);
+            $table->decimal('distance', 8, 2)->nullable()->default(null);
 
             // Rider / edge-device identifier.
             // Stored as a code string ("RIDER-001") for now; can be converted to

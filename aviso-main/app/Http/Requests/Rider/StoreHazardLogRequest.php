@@ -20,7 +20,7 @@ class StoreHazardLogRequest extends FormRequest
             'latitude'    => ['required', 'numeric', 'between:-90,90'],
             'longitude'   => ['required', 'numeric', 'between:-180,180'],
             'confidence'  => ['required', 'numeric', 'between:0,100'],
-            'distance'    => ['required', 'numeric', 'min:0'],
+            'distance'    => ['nullable', 'numeric', 'min:0'],
             'detected_at' => ['nullable', 'date'],
         ];
     }
