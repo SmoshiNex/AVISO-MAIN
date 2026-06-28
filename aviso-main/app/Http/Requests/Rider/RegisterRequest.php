@@ -40,11 +40,11 @@ class RegisterRequest extends FormRequest
             'contact_number'        => ['required', 'string', 'regex:/^\+639\d{9}$/'],
             'password'              => ['required', 'string', 'min:8', 'confirmed'],
             'password_confirmation' => ['required'],
-            'street'                => ['nullable', 'string', 'max:255'],
-            'barangay_id'           => ['nullable', 'string', 'exists:barangays,code'],
-            'city_id'               => ['nullable', 'string', 'exists:cities,city_id'],
-            'province_id'           => ['nullable', 'string', 'exists:provinces,province_id'],
-            'region_id'             => ['nullable', 'string', 'exists:regions,region_id'],
+            'street'                => ['required', 'string', 'max:255'],
+            'barangay_id'           => ['required', 'string', 'exists:barangays,code'],
+            'city_id'               => ['required', 'string', 'exists:cities,city_id'],
+            'province_id'           => ['required', 'string', 'exists:provinces,province_id'],
+            'region_id'             => ['required', 'string', 'exists:regions,region_id'],
         ];
     }
 

@@ -33,6 +33,7 @@ class User extends Authenticatable
         'avatar_path',
         'password',
         'role',
+        'email_verified_at',
         'street',
         'barangay_id',
         'city_id',

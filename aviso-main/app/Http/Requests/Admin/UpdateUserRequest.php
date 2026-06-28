@@ -21,8 +21,6 @@ class UpdateUserRequest extends FormRequest
             'first_name'     => ['required', 'string', 'max:255'],
             'middle_name'    => ['nullable', 'string', 'max:255'],
             'last_name'      => ['required', 'string', 'max:255'],
-            'username'       => ['required', 'string', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'email'          => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'contact_number' => ['nullable', 'string', 'max:20'],
             'address'        => ['nullable', 'string', 'max:1000'],
             'street'         => ['nullable', 'string', 'max:255'],
@@ -30,11 +28,16 @@ class UpdateUserRequest extends FormRequest
             'city_id'        => ['nullable', 'string', 'exists:cities,city_id'],
             'province_id'    => ['nullable', 'string', 'exists:provinces,province_id'],
             'region_id'      => ['nullable', 'string', 'exists:regions,region_id'],
-            'role'           => ['required', Rule::in(['admin', 'rider'])],
         ];
 
-        if ($this->filled('password')) {
-            $rules['password'] = ['required', 'string', Password::min(8)->mixedCase(), 'confirmed'];
+        if ($user->role !== 'rider') {
+            $rules['username'] = ['required', 'string', 'max:255', Rule::unique('users')->ignore($user->id)];
+            $rules['email']    = ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)];
+            $rules['role']     = ['required', Rule::in(['admin', 'rider'])];
+
+            if ($this->filled('password')) {
+                $rules['password'] = ['required', 'string', Password::min(8)->mixedCase(), 'confirmed'];
+            }
         }
 
         return $rules;

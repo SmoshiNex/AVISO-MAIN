@@ -52,7 +52,7 @@ const navGroups = [
         title: "MANAGEMENT",
         items: [
             {
-                title: "User Management",
+                title: "Riders",
                 url: "/users",
                 icon: Users,
             },

@@ -193,12 +193,7 @@ export function UserManager({ users, filters }: UserManagerProps) {
 
     return (
         <>
-            <div className="flex justify-end mb-4">
-                <Button onClick={openCreateModal}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Create User
-                </Button>
-            </div>
+
 
             <Card className="border-border/50 shadow-sm">
                 {/* Filters */}
