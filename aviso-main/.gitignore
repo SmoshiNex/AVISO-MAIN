@@ -33,3 +33,8 @@ AGENTS.md
 # Local env variants not tracked
 .env.local
 .env.testing
+
+# Documentation — diagrams and schema files, keep local only
+/docs/
+*.md
+!README.md
