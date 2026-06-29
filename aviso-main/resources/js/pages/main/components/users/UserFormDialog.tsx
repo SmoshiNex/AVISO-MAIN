@@ -6,6 +6,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,13 +119,18 @@ export function UserFormDialog({
                                     id="username"
                                     value={formData.username}
                                     onChange={e => setFormData('username', sanitizeAlphanumeric(e.target.value))}
+                                    disabled={editingUser?.role === 'rider'}
                                     required
                                 />
                                 {errors.username && <p className="text-xs text-destructive">{errors.username}</p>}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="role">Role</Label>
-                                <Select value={formData.role} onValueChange={v => setFormData('role', v)}>
+                                <Select 
+                                    value={formData.role} 
+                                    onValueChange={v => setFormData('role', v)}
+                                    disabled={editingUser?.role === 'rider'}
+                                >
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -144,6 +150,7 @@ export function UserFormDialog({
                                 type="email"
                                 value={formData.email}
                                 onChange={e => setFormData('email', e.target.value)}
+                                disabled={editingUser?.role === 'rider'}
                                 required
                             />
                             {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
@@ -174,35 +181,54 @@ export function UserFormDialog({
                             errors={errors}
                         />
 
-                        <div className="space-y-2">
-                            <Label htmlFor="password">
-                                {editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
-                            </Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={formData.password}
-                                onChange={e => setFormData('password', e.target.value)}
-                                required={!editingUser}
-                            />
-                            {formData.password && <PasswordChecker password={formData.password} />}
-                            {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
-                        </div>
+                        {(!editingUser || editingUser.role !== 'rider') && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="password">
+                                        {editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
+                                    </Label>
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        value={formData.password}
+                                        onChange={e => setFormData('password', e.target.value)}
+                                        required={!editingUser}
+                                    />
+                                    {formData.password && <PasswordChecker password={formData.password} />}
+                                    {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+                                </div>
 
-                        {(formData.password || !editingUser) && (
-                            <div className="space-y-2">
-                                <Label htmlFor="password_confirmation">Confirm Password</Label>
-                                <Input
-                                    id="password_confirmation"
-                                    type="password"
-                                    value={formData.password_confirmation}
-                                    onChange={e => setFormData('password_confirmation', e.target.value)}
-                                    required={!!formData.password || !editingUser}
-                                />
-                                {errors.password_confirmation && (
-                                    <p className="text-xs text-destructive">{errors.password_confirmation}</p>
+                                {(formData.password || !editingUser) && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password_confirmation">Confirm Password</Label>
+                                        <Input
+                                            id="password_confirmation"
+                                            type="password"
+                                            value={formData.password_confirmation}
+                                            onChange={e => setFormData('password_confirmation', e.target.value)}
+                                            required={!!formData.password || !editingUser}
+                                        />
+                                        {errors.password_confirmation && (
+                                            <p className="text-xs text-destructive">{errors.password_confirmation}</p>
+                                        )}
+                                        {formData.password_confirmation.length > 0 && (
+                                            <div className="flex items-center gap-1.5 mt-2">
+                                                {formData.password === formData.password_confirmation ? (
+                                                    <>
+                                                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                        <span className="text-xs text-green-500">Passwords match</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <XCircle className="w-4 h-4 text-red-500" />
+                                                        <span className="text-xs text-red-500">Passwords do not match</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
-                            </div>
+                            </>
                         )}
                     </div>
 

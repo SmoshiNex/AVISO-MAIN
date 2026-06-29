@@ -20,11 +20,11 @@ interface PageProps {
 export default function Users({ users, stats, filters }: PageProps) {
     return (
         <AdminLayout>
-            <Head title="User Management" />
+            <Head title="Riders" />
 
             {/* Header */}
             <div className="mb-6">
-                <h1 className="text-3xl font-heading font-bold tracking-tight">User Management</h1>
+                <h1 className="text-3xl font-heading font-bold tracking-tight">Riders</h1>
                 <p className="text-muted-foreground mt-1">
                     Manage administrators and edge-device riders.
                 </p>
