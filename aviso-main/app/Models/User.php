@@ -81,6 +81,11 @@ class User extends Authenticatable
         return $this->hasMany(EmergencyContact::class);
     }
 
+    public function emergencyAlerts(): HasMany
+    {
+        return $this->hasMany(EmergencyAlert::class);
+    }
+
     public function trips(): HasMany
     {
         return $this->hasMany(Trip::class);

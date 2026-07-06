@@ -43,4 +43,9 @@ return [
         'key' => env('GEMINI_API_KEY'),
     ],
 
+    'smsapiph' => [
+        'key' => env('SMS_API_KEY'),
+        'url' => env('SMS_API_URL', 'https://smsapiph.onrender.com/api/v1/send/sms'),
+    ],
+
 ];

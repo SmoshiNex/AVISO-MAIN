@@ -42,6 +42,10 @@ Route::middleware('web')->group(function () {
         Route::post('/users/{user}/emergency-contacts', [\App\Http\Controllers\Admin\EmergencyContactController::class, 'store'])->name('users.emergency-contacts.store');
         Route::delete('/emergency-contacts/{contact}', [\App\Http\Controllers\Admin\EmergencyContactController::class, 'destroy'])->name('users.emergency-contacts.destroy');
 
+        // ── SOS Alert History ──────────────────────────────────────────────
+        Route::get('/sos-alerts', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'index'])->name('sos-alerts.index');
+        Route::get('/sos-alerts/{user}/history', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'history'])->name('sos-alerts.history');
+
         // ── Live Rider Tracking (JSON API for the map) ─────────────────────
         Route::get('/api/trips/active', [\App\Http\Controllers\Admin\TripController::class, 'activeRiders'])->name('trips.active');
 
