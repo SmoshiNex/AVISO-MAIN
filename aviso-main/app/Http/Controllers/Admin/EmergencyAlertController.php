@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmergencyAlert;
 use App\Models\User;
 use App\Services\EmergencyAlertService;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,14 @@ class EmergencyAlertController extends Controller
         return response()->json([
             'success' => true,
             'alerts'  => $this->emergencyAlertService->getAlertsForRider($user),
+        ]);
+    }
+
+    public function resolve(EmergencyAlert $alert): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'alert'   => $this->emergencyAlertService->resolve($alert),
         ]);
     }
 }

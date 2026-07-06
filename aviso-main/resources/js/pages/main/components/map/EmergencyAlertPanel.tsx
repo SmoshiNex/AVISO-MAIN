@@ -1,39 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, AlertTriangle, MapPin } from 'lucide-react';
+import { X, AlertTriangle, MapPin, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { type EmergencyAlert } from './riderData';
 import { getRiderThemeColor } from './riderUtils';
 import { getHazardTailwindColors } from '@/lib/hazards';
+import { reverseGeocode } from '@/lib/geocoding';
 
 interface EmergencyAlertPanelProps {
     emergency: EmergencyAlert;
     theme: 'day' | 'night' | 'dusk' | 'dawn';
     onClose: () => void;
     onResolve: () => void;
+    /** Set when viewing a past record from SOS Alerts history rather than a
+     * live in-progress emergency — softens the "active emergency" framing
+     * (no pulsing live indicator, no "Current Position" wording) since a
+     * resolved/historical incident isn't something currently unfolding. */
+    isHistorical?: boolean;
 }
 
-async function reverseGeocode(lng: number, lat: number): Promise<string> {
-    const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
-    if (!token) throw new Error('No Mapbox token');
-    const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=neighborhood,locality,district,place&access_token=${token}&language=en&limit=1`
-    );
-    if (!res.ok) throw new Error('Geocoding request failed');
-    const data = await res.json();
-    const feature = data.features?.[0];
-    if (!feature) throw new Error('No results');
-
-    const ctx: Array<{ id: string; text: string }> = feature.context ?? [];
-    const neighborhood = ctx.find(c => c.id.startsWith('neighborhood'))?.text;
-    const locality = ctx.find(c => c.id.startsWith('locality'))?.text;
-    const district = ctx.find(c => c.id.startsWith('district'))?.text;
-
-    return neighborhood ?? locality ?? district ?? feature.text ?? 'Unknown';
-}
-
-export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve }: EmergencyAlertPanelProps) {
+export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve, isHistorical = false }: EmergencyAlertPanelProps) {
     const riderColor = getRiderThemeColor(emergency.colorBase, theme);
+    const isResolved = emergency.status === 'resolved';
     const hazard = emergency.nearestHazard;
     const lng = Number(emergency.coords[0]);
     const lat = Number(emergency.coords[1]);
@@ -58,9 +46,10 @@ export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve }: Em
     useEffect(() => {
         const update = () => {
             const secs = Math.floor((Date.now() - triggeredDate.getTime()) / 1000);
-            if (secs < 60)       setElapsed(`${secs}s ago`);
+            if (secs < 60)        setElapsed(`${secs}s ago`);
             else if (secs < 3600) setElapsed(`${Math.floor(secs / 60)}m ago`);
-            else                  setElapsed(`${Math.floor(secs / 3600)}h ago`);
+            else if (secs < 86400) setElapsed(`${Math.floor(secs / 3600)}h ago`);
+            else                  setElapsed(`${Math.floor(secs / 86400)}d ago`);
         };
         update();
         elapsedTimerRef.current = setInterval(update, 10_000);
@@ -68,7 +57,9 @@ export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve }: Em
     }, [emergency.triggeredAt]);
 
     return (
-        <div className="absolute bottom-8 left-3 z-10 bg-background/98 backdrop-blur shadow-2xl border border-destructive/30 rounded-xl p-4 w-80 transition-all">
+        <div className={`absolute bottom-8 left-3 z-10 bg-background/98 backdrop-blur shadow-2xl border rounded-xl p-4 w-80 transition-all ${
+            !isHistorical && !isResolved ? 'border-destructive/30' : 'border-border/60'
+        }`}>
             {/* Header */}
             <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
@@ -88,13 +79,27 @@ export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve }: Em
             </div>
 
             {/* SOS Status */}
-            <div className="flex items-center justify-between mb-3 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+            <div className={`flex items-center justify-between mb-3 p-2.5 rounded-lg border ${
+                isResolved
+                    ? 'bg-green-500/10 border-green-500/20'
+                    : 'bg-destructive/10 border-destructive/20'
+            }`}>
                 <div className="flex items-center gap-2">
-                    <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+                    {isResolved ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                    ) : isHistorical ? (
+                        <AlertTriangle className="h-3 w-3 text-destructive" />
+                    ) : (
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+                        </span>
+                    )}
+                    <span className={`text-xs font-bold uppercase tracking-wide ${
+                        isResolved ? 'text-green-600' : 'text-destructive'
+                    }`}>
+                        {isResolved ? 'Resolved' : isHistorical ? 'Pending Response' : 'Active Emergency'}
                     </span>
-                    <span className="text-xs font-bold text-destructive uppercase tracking-wide">Active Emergency</span>
                 </div>
                 <div className="text-right">
                     <div className="text-[10px] text-muted-foreground font-mono">{triggeredTime}</div>
@@ -102,12 +107,12 @@ export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve }: Em
                 </div>
             </div>
 
-            {/* Current Position */}
+            {/* Location */}
             <div className="border border-border/60 rounded-lg p-3 mb-3 bg-muted/30">
                 <div className="flex items-center gap-1.5 mb-2">
                     <MapPin className="w-3.5 h-3.5 text-destructive" />
                     <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">
-                        Current Position
+                        {isHistorical ? 'Incident Location' : 'Current Position'}
                     </span>
                 </div>
                 <div className="space-y-1 text-[11px] text-muted-foreground">
@@ -198,14 +203,21 @@ export function EmergencyAlertPanel({ emergency, theme, onClose, onResolve }: Em
             )}
 
             {/* Resolve Button */}
-            <Button
-                variant="destructive"
-                size="sm"
-                className="w-full"
-                onClick={onResolve}
-            >
-                Resolve Emergency
-            </Button>
+            {isResolved ? (
+                <div className="w-full flex items-center justify-center gap-1.5 py-2 rounded-md bg-green-500/10 text-green-600 text-sm font-medium">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Already Resolved
+                </div>
+            ) : (
+                <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full"
+                    onClick={onResolve}
+                >
+                    Resolve Emergency
+                </Button>
+            )}
         </div>
     );
 }

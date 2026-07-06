@@ -14,12 +14,22 @@ Route::middleware('web')->group(function () {
     Route::middleware(['auth', RequireAdminRole::class])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
-        Route::get('/map', function () {
+        Route::get('/map', function (\Illuminate\Http\Request $request) {
             $activeHazards = \App\Models\HazardLog::where('status', 'active')->get();
             $settings = \App\Models\SystemSetting::instance();
+
+            $focusAlert = null;
+            if ($request->filled('alert')) {
+                $alert = \App\Models\EmergencyAlert::with('user')->find($request->query('alert'));
+                if ($alert) {
+                    $focusAlert = (new \App\Events\EmergencyAlertTriggered($alert))->broadcastWith();
+                }
+            }
+
             return Inertia::render('main/MapPage', [
                 'hazards'               => $activeHazards,
                 'emergencyHazardTypes'  => $settings->emergency_hazard_types,
+                'focusAlert'            => $focusAlert,
             ]);
         })->name('map');
         
@@ -45,6 +55,7 @@ Route::middleware('web')->group(function () {
         // ── SOS Alert History ──────────────────────────────────────────────
         Route::get('/sos-alerts', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'index'])->name('sos-alerts.index');
         Route::get('/sos-alerts/{user}/history', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'history'])->name('sos-alerts.history');
+        Route::put('/sos-alerts/{alert}/resolve', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'resolve'])->name('sos-alerts.resolve');
 
         // ── Live Rider Tracking (JSON API for the map) ─────────────────────
         Route::get('/api/trips/active', [\App\Http\Controllers\Admin\TripController::class, 'activeRiders'])->name('trips.active');

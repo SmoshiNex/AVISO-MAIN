@@ -18,8 +18,10 @@ import {
     ChevronLeft,
     ChevronRight,
     Loader2,
+    CheckCircle2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { reverseGeocode } from "@/lib/geocoding";
 import {
     type EmergencyAlert,
     type PaginatedData,
@@ -60,7 +62,16 @@ export function SosTable({ riders, filters }: SosTableProps) {
     const [historyByRider, setHistoryByRider] = useState<
         Record<number, EmergencyAlert[]>
     >({});
+    const [addressByAlertId, setAddressByAlertId] = useState<
+        Record<number, string | null>
+    >({});
     const [loadingRiderId, setLoadingRiderId] = useState<number | null>(null);
+    const [resolvingAlertId, setResolvingAlertId] = useState<number | null>(null);
+    // Controlled so we can fetch history BEFORE the accordion opens — Radix
+    // measures content height once at open time, so revealing a taller list
+    // asynchronously after opening leaves it clipped at the loading spinner's
+    // (shorter) height.
+    const [openRiderId, setOpenRiderId] = useState("");
 
     const submitSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,21 +82,47 @@ export function SosTable({ riders, filters }: SosTableProps) {
         );
     };
 
-    const handleExpand = async (value: string) => {
-        if (!value) return; // accordion collapsed
+    const handleValueChange = async (value: string) => {
+        if (!value) {
+            setOpenRiderId("");
+            return;
+        }
 
         const riderId = Number(value);
-        if (historyByRider[riderId]) return; // already cached
+        if (historyByRider[riderId]) {
+            setOpenRiderId(value);
+            return;
+        }
 
         setLoadingRiderId(riderId);
         try {
             const { data } = await axios.get(
                 route("sos-alerts.history", riderId),
             );
-            setHistoryByRider((prev) => ({
-                ...prev,
-                [riderId]: data.alerts,
-            }));
+            const alerts: EmergencyAlert[] = data.alerts;
+
+            // Resolve addresses before opening — same reason history is
+            // fetched up front: Radix measures content height once, at open
+            // time, so anything that changes the content's height afterward
+            // (like an address swapping in for a coordinate pair) gets clipped.
+            const addresses = await Promise.all(
+                alerts.map((alert) =>
+                    reverseGeocode(
+                        Number(alert.longitude),
+                        Number(alert.latitude),
+                    ).catch(() => null),
+                ),
+            );
+
+            setHistoryByRider((prev) => ({ ...prev, [riderId]: alerts }));
+            setAddressByAlertId((prev) => {
+                const next = { ...prev };
+                alerts.forEach((alert, i) => {
+                    next[alert.id] = addresses[i];
+                });
+                return next;
+            });
+            setOpenRiderId(value);
         } catch {
             toast.error({
                 title: "Failed to load SOS history",
@@ -93,6 +130,30 @@ export function SosTable({ riders, filters }: SosTableProps) {
             });
         } finally {
             setLoadingRiderId(null);
+        }
+    };
+
+    const handleResolve = async (alert: EmergencyAlert, riderId: number) => {
+        setResolvingAlertId(alert.id);
+        try {
+            await axios.put(route("sos-alerts.resolve", alert.id));
+            setHistoryByRider((prev) => ({
+                ...prev,
+                [riderId]: prev[riderId].map((a) =>
+                    a.id === alert.id
+                        ? { ...a, status: "resolved", resolved_at: new Date().toISOString() }
+                        : a,
+                ),
+            }));
+            router.reload({ only: ["riders", "stats"] });
+            toast.success({ title: "Alert marked as resolved" });
+        } catch {
+            toast.error({
+                title: "Failed to resolve alert",
+                description: "Please try again.",
+            });
+        } finally {
+            setResolvingAlertId(null);
         }
     };
 
@@ -129,11 +190,13 @@ export function SosTable({ riders, filters }: SosTableProps) {
                 <Accordion
                     type="single"
                     collapsible
-                    onValueChange={handleExpand}
+                    value={openRiderId}
+                    onValueChange={handleValueChange}
                 >
                     {riders.data.map((rider) => {
                         const latest = rider.emergency_alerts[0];
                         const history = historyByRider[rider.id];
+                        const isLoading = loadingRiderId === rider.id;
 
                         return (
                             <AccordionItem
@@ -141,7 +204,10 @@ export function SosTable({ riders, filters }: SosTableProps) {
                                 value={String(rider.id)}
                                 className="px-4"
                             >
-                                <AccordionTrigger className="hover:no-underline hover:bg-muted/20 rounded-none py-3">
+                                <AccordionTrigger
+                                    className="hover:no-underline hover:bg-muted/20 rounded-none py-3"
+                                    disabled={isLoading}
+                                >
                                     <div className="grid grid-cols-[1fr_90px_150px_110px] gap-2 items-center w-full text-sm">
                                         <div>
                                             <p className="font-medium">
@@ -156,7 +222,11 @@ export function SosTable({ riders, filters }: SosTableProps) {
                                                 variant="outline"
                                                 className="gap-1 font-mono bg-destructive/10 text-destructive border-destructive/30"
                                             >
-                                                <Siren className="w-3 h-3" />
+                                                {isLoading ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                    <Siren className="w-3 h-3" />
+                                                )}
                                                 {rider.emergency_alerts_count}
                                             </Badge>
                                         </span>
@@ -178,46 +248,65 @@ export function SosTable({ riders, filters }: SosTableProps) {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
-                                    {loadingRiderId === rider.id ? (
-                                        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            Loading SOS history...
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2 pb-2">
-                                            {(history ?? []).map((alert) => (
-                                                <div
-                                                    key={alert.id}
-                                                    className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-sm"
+                                    <div className="space-y-2 pb-2">
+                                        {(history ?? []).map((alert) => (
+                                            <div
+                                                key={alert.id}
+                                                className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-sm"
+                                            >
+                                                <span className="text-muted-foreground whitespace-nowrap">
+                                                    {formatDateTime(alert.triggered_at)}
+                                                </span>
+                                                <a
+                                                    href={route("map", {
+                                                        alert: alert.id,
+                                                    })}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    title={`${Number(alert.latitude).toFixed(5)}, ${Number(alert.longitude).toFixed(5)} — open on Live Map`}
+                                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                                                 >
-                                                    <span className="text-muted-foreground whitespace-nowrap">
-                                                        {formatDateTime(alert.triggered_at)}
+                                                    <MapPin className="w-3 h-3 shrink-0" />
+                                                    <span
+                                                        className={
+                                                            addressByAlertId[alert.id]
+                                                                ? undefined
+                                                                : "font-mono"
+                                                        }
+                                                    >
+                                                        {addressByAlertId[alert.id] ??
+                                                            `${Number(alert.latitude).toFixed(5)}, ${Number(alert.longitude).toFixed(5)}`}
                                                     </span>
-                                                    <a
-                                                        href={`https://maps.google.com/?q=${alert.latitude},${alert.longitude}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
-                                                    >
-                                                        <MapPin className="w-3 h-3" />
-                                                        {Number(alert.latitude).toFixed(5)},{" "}
-                                                        {Number(alert.longitude).toFixed(5)}
-                                                    </a>
-                                                    <Badge
+                                                </a>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`capitalize ${statusBadgeClass(alert.status)}`}
+                                                >
+                                                    {alert.status}
+                                                </Badge>
+                                                {alert.resolved_at ? (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Resolved {formatDateTime(alert.resolved_at)}
+                                                    </span>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
                                                         variant="outline"
-                                                        className={`capitalize ${statusBadgeClass(alert.status)}`}
+                                                        className="ml-auto h-7 gap-1.5 text-xs"
+                                                        disabled={resolvingAlertId === alert.id}
+                                                        onClick={() => handleResolve(alert, rider.id)}
                                                     >
-                                                        {alert.status}
-                                                    </Badge>
-                                                    {alert.resolved_at && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            Resolved {formatDateTime(alert.resolved_at)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                        {resolvingAlertId === alert.id ? (
+                                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                                        ) : (
+                                                            <CheckCircle2 className="w-3 h-3" />
+                                                        )}
+                                                        Mark Resolved
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </AccordionContent>
                             </AccordionItem>
                         );

@@ -23,6 +23,9 @@ export interface EmergencyAlert {
     userInfo: RiderDef['userInfo'];
     triggeredAt: string;
     nearestHazard: HazardLog | null;
+    /** Only meaningful for alerts opened from history — live arrivals are
+     * always freshly 'pending' so this is left undefined for them. */
+    status?: string;
 }
 
 export const RIDER_DEFS: RiderDef[] = [

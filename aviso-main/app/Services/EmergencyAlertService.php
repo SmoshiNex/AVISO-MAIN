@@ -95,6 +95,16 @@ class EmergencyAlertService
         return $rider->emergencyAlerts()->orderByDesc('triggered_at')->get();
     }
 
+    public function resolve(EmergencyAlert $alert): EmergencyAlert
+    {
+        $alert->update([
+            'status'      => EmergencyAlert::STATUS_RESOLVED,
+            'resolved_at' => now(),
+        ]);
+
+        return $alert;
+    }
+
     public function getAdminStats(): array
     {
         return [
