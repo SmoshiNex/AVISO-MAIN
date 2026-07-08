@@ -39,6 +39,27 @@ export interface HazardLog {
     detected_at: string;
 }
 
+export interface EmergencyAlert {
+    id: number;
+    user_id: number;
+    rider_code: string;
+    latitude: number;
+    longitude: number;
+    triggered_at: string;
+    status: 'pending' | 'acknowledged' | 'resolved' | string;
+    resolved_at: string | null;
+}
+
+export interface SosRiderSummary {
+    id: number;
+    first_name: string;
+    last_name: string;
+    username: string;
+    emergency_alerts_count: number;
+    emergency_alerts_max_triggered_at: string;
+    emergency_alerts: EmergencyAlert[]; // latest 1, preloaded by the index endpoint
+}
+
 // Often Inertia passes paginated data in this structure:
 export interface PaginatedData<T> {
     data: T[];

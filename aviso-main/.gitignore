@@ -1,6 +1,7 @@
 *.log
 .DS_Store
 .env
+.env.example
 .env.backup
 .env.production
 .phpactor.json
@@ -33,3 +34,8 @@ AGENTS.md
 # Local env variants not tracked
 .env.local
 .env.testing
+
+# Documentation — diagrams and schema files, keep local only
+/docs/
+*.md
+!README.md

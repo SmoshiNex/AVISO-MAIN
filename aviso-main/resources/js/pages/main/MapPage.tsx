@@ -1,7 +1,8 @@
 import { Head } from '@inertiajs/react';
+import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Map, MapControls } from '@/components/ui/map';
+import { Map, MapControls, MapMarker, MarkerContent, useMap } from '@/components/ui/map';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Cone, Construction, MapPin, ShieldAlert, StopCircle } from 'lucide-react';
 
@@ -10,6 +11,8 @@ import { SearchBox } from './components/map/SearchBox';
 import { HazardPins } from './components/map/HazardPins';
 import { MapController } from './components/map/MapController';
 import { EmergencyRiders } from './components/map/EmergencyRiders';
+import { EmergencyAlertPanel } from './components/map/EmergencyAlertPanel';
+import { EmergencyHotlinesPanel } from './components/map/EmergencyHotlinesPanel';
 import { getHazardColor, getHazardTailwindColors } from '@/lib/hazards';
 import { toast } from '@/lib/toast';
 import { type HazardLog } from '@/types/models';
@@ -31,8 +34,74 @@ const HAZARD_STATS: {
     { types: ['Traffic Light Red', 'Traffic Light Orange', 'Traffic Light Green'],         label: 'Traffic Lights', icon: <StopCircle className="w-5 h-5" />,   description: 'Red / Orange / Green' },
 ];
 
+/** Shape returned by `EmergencyAlertTriggered::broadcastWith()` — used both
+ * for live Echo events and for the historical "open on map" link from SOS
+ * Alerts, so both paths go through the exact same transform. */
+interface SosAlertPayload {
+    id: number;
+    rider_code: string;
+    latitude: number;
+    longitude: number;
+    triggered_at: string;
+    status: string;
+    rider_name: string;
+    username: string;
+    contact: string;
+    address: string;
+}
+
 interface MapPageProps {
     hazards: HazardLog[];
+    focusAlert?: SosAlertPayload | null;
+    /** SOS alerts still pending at page load. Seeded into the live emergency
+     * state on mount so an in-progress emergency survives navigating away and
+     * back — the Reverb channel only pushes new events, never active ones. */
+    activeAlerts?: SosAlertPayload[];
+}
+
+function toEmergencyAlert(data: SosAlertPayload, hazards: HazardLog[]): EmergencyAlert {
+    const coords: LngLat = [Number(data.longitude), Number(data.latitude)];
+    const riderName = data.rider_name ?? data.rider_code;
+
+    const COLOR_BASES = ['blue', 'green', 'orange'] as const;
+    const colorBase = COLOR_BASES[
+        data.rider_code.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 3
+    ];
+
+    return {
+        id: String(data.id),
+        riderId: data.rider_code,
+        riderName,
+        colorBase,
+        coords,
+        userInfo: {
+            fullName: riderName,
+            username: data.username ?? data.rider_code,
+            contact: data.contact ?? '—',
+            address: data.address ?? '—',
+        },
+        triggeredAt: data.triggered_at,
+        nearestHazard: findNearestHazard(coords, hazards),
+        status: data.status,
+    };
+}
+
+/** Flies the camera to a historical SOS alert's location once, on load.
+ * Deliberately separate from EmergencyRiders' live-arrival flyTo — a
+ * historical/resolved record should never be treated as a fresh live
+ * emergency (it must not count toward the "active" banner or re-trigger
+ * the alarm loop). */
+function HistoricalAlertFlyTo({ coords }: { coords: LngLat }) {
+    const { map, isLoaded } = useMap();
+    const firedRef = useRef(false);
+
+    useEffect(() => {
+        if (!map || !isLoaded || firedRef.current) return;
+        firedRef.current = true;
+        map.flyTo({ center: coords, zoom: 15, duration: 1500, essential: true });
+    }, [map, isLoaded, coords]);
+
+    return null;
 }
 
 function RealTimeClock() {
@@ -55,7 +124,7 @@ function RealTimeClock() {
 
 
 
-export default function MapPage({ hazards }: MapPageProps) {
+export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPageProps) {
     // Map theme preset — respects localStorage preference set in Settings
     const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>(
         () => (localStorage.getItem('aviso_map_theme') as 'day' | 'night' | 'dusk' | 'dawn') ?? 'day'
@@ -72,12 +141,13 @@ export default function MapPage({ hazards }: MapPageProps) {
     const availableTypes = useMemo(() => Array.from(new Set(hazards.map(h => h.type))), [hazards]);
 
     // ── Jarvis audio ─────────────────────────────────────────────────────
-    const audioCtxRef     = useRef<AudioContext | null>(null);
-    const sosBufRef       = useRef<AudioBuffer | null>(null);
-    const alarmSrcRef     = useRef<AudioBufferSourceNode | null>(null);
-    const alarmActiveRef  = useRef(false);
-    const pendingAlarmRef = useRef(false);
-    const startLoopRef    = useRef<() => void>(() => {});
+    const audioCtxRef       = useRef<AudioContext | null>(null);
+    const sosBufRef         = useRef<AudioBuffer | null>(null);
+    const alarmSrcRef       = useRef<AudioBufferSourceNode | null>(null);
+    const riderAlertSrcRef  = useRef<AudioBufferSourceNode | null>(null);
+    const alarmActiveRef    = useRef(false);
+    const pendingAlarmRef   = useRef(false);
+    const startLoopRef      = useRef<() => void>(() => {});
 
     useEffect(() => {
         let initing = false;
@@ -141,6 +211,12 @@ export default function MapPage({ hazards }: MapPageProps) {
         };
     }, []);
 
+    /** Stop any currently playing rider-alert announcement. */
+    const stopRiderAlert = () => {
+        try { riderAlertSrcRef.current?.stop(); } catch {}
+        riderAlertSrcRef.current = null;
+    };
+
     const startAlarmLoop = () => {
         if (!audioCtxRef.current || !sosBufRef.current) {
             pendingAlarmRef.current = true; // retry on next user interaction
@@ -168,17 +244,84 @@ export default function MapPage({ hazards }: MapPageProps) {
     const stopAlarmLoop = () => {
         alarmActiveRef.current = false;
         pendingAlarmRef.current = false;
+        stopRiderAlert();
         try { alarmSrcRef.current?.stop(); } catch {}
         alarmSrcRef.current = null;
     };
 
-    // Emergency alert state — populated from real Reverb broadcasts
-    const [activeEmergencies, setActiveEmergencies] = useState<EmergencyAlert[]>([]);
+    // Emergency alert state — drives the "SOS Alerts X ACTIVE" banner, the map
+    // markers, and the alarm audio loop. Seeded on mount from the backend's
+    // still-PENDING alerts (so an active emergency survives page navigation),
+    // then kept live by Reverb broadcasts. Only genuinely-pending alerts are
+    // seeded — a resolved one is never restored here, so it can't be misreported
+    // as currently active.
+    const [activeEmergencies, setActiveEmergencies] = useState<EmergencyAlert[]>(
+        () => (activeAlerts ?? []).map(a => toEmergencyAlert(a, hazards)),
+    );
+
+    // A historical alert opened via an SOS Alerts "open on map" link
+    // (?alert=id) — shown as a read-only record, entirely separate from the
+    // live tracking state above.
+    const [historicalAlert, setHistoricalAlert] = useState<EmergencyAlert | null>(
+        () => (focusAlert ? toEmergencyAlert(focusAlert, hazards) : null),
+    );
+    const [historicalDismissed, setHistoricalDismissed] = useState(false);
+
+    // The Emergency Hotlines popup is a separate overlay from the rider SOS
+    // panel. It rides on the same "an emergency is happening" signal and
+    // re-surfaces whenever a new SOS arrives, even if previously dismissed.
+    const [hotlinesDismissed, setHotlinesDismissed] = useState(false);
+    const prevActiveCountRef = useRef(0);
+    useEffect(() => {
+        if (activeEmergencies.length > prevActiveCountRef.current) {
+            setHotlinesDismissed(false);
+        }
+        prevActiveCountRef.current = activeEmergencies.length;
+    }, [activeEmergencies.length]);
+
+    // A focused alert opened via ?alert=id that is ALSO a currently-pending
+    // (seeded) emergency should render only as the live active emergency, not
+    // additionally as a gray historical marker — otherwise the same alert shows
+    // up twice on the map.
+    const showHistorical =
+        !!historicalAlert &&
+        !historicalDismissed &&
+        !activeEmergencies.some(e => e.id === historicalAlert.id);
+
+    const showHotlines =
+        (activeEmergencies.length > 0 || showHistorical) &&
+        !hotlinesDismissed;
+
+    const handleResolveHistorical = async () => {
+        if (!historicalAlert) return;
+        try {
+            await axios.put(route('sos-alerts.resolve', historicalAlert.id));
+            setHistoricalAlert(prev => (prev ? { ...prev, status: 'resolved' } : prev));
+            toast.success({ title: 'Alert marked as resolved' });
+        } catch {
+            toast.error({
+                title: 'Failed to resolve alert',
+                description: 'Please try again.',
+            });
+        }
+    };
 
     // Stop alarm when all emergencies are resolved
     useEffect(() => {
         if (activeEmergencies.length === 0) stopAlarmLoop();
     }, [activeEmergencies.length]);
+
+    // On mount: if the page loaded with an already-active (seeded) emergency —
+    // i.e. the admin navigated back mid-SOS — resume the alarm so the audio
+    // matches the restored map state. startAlarmLoop() queues itself until the
+    // AudioContext is unlocked by the next user gesture if it isn't ready yet.
+    // Also stop the loop on unmount so navigating away never leaves a detached
+    // audio loop running that later can't be silenced.
+    useEffect(() => {
+        if (activeEmergencies.length > 0) startAlarmLoop();
+        return () => stopAlarmLoop();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         const pusher = (window.Echo as any).connector?.pusher;
@@ -202,27 +345,32 @@ export default function MapPage({ hazards }: MapPageProps) {
         }
         console.log('[AVISO WS] Subscribing to channel: riders.live');
         const channel = window.Echo.channel('riders.live');
-        channel.listen('.emergency.triggered', (data: any) => {
+        channel.listen('.emergency.triggered', (data: SosAlertPayload) => {
             console.log('[AVISO WS] 🚨 emergency.triggered received:', data);
-            const coords: LngLat = [parseFloat(data.longitude), parseFloat(data.latitude)];
+            const coords: LngLat = [Number(data.longitude), Number(data.latitude)];
             const riderName = data.rider_name ?? data.rider_code;
-
-            // Deterministic color per rider so repeated SOS events keep the same color
-            const COLOR_BASES = ['blue', 'green', 'orange'] as const;
-            const colorBase = COLOR_BASES[
-                data.rider_code.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 3
-            ];
 
             const ctx = audioCtxRef.current;
             if (ctx) {
+                // Stop any currently playing audio to prevent overlapping voices
+                stopRiderAlert();
+                stopAlarmLoop();
+
                 fetch(`/jarvis/rider-alert?name=${encodeURIComponent(riderName)}`, { credentials: 'same-origin' })
                     .then(res => res.ok ? res.arrayBuffer() : Promise.reject(res.status))
                     .then(buf => ctx.decodeAudioData(buf))
                     .then(buffer => {
+                        // Double-check nothing started playing while we were fetching
+                        stopRiderAlert();
+
                         const src = ctx.createBufferSource();
                         src.buffer = buffer;
                         src.connect(ctx.destination);
-                        src.onended = () => startLoopRef.current();
+                        riderAlertSrcRef.current = src;
+                        src.onended = () => {
+                            riderAlertSrcRef.current = null;
+                            startLoopRef.current();
+                        };
                         src.start();
                     })
                     .catch(() => startLoopRef.current());
@@ -239,24 +387,11 @@ export default function MapPage({ hazards }: MapPageProps) {
                         id:          String(data.id),
                         coords,
                         triggeredAt: data.triggered_at,
+                        status:      data.status,
                     };
                     return updated;
                 }
-                return [...prev, {
-                    id:          String(data.id),
-                    riderId:     data.rider_code,
-                    riderName,
-                    colorBase,
-                    coords,
-                    userInfo: {
-                        fullName: riderName,
-                        username: data.username ?? data.rider_code,
-                        contact:  data.contact  ?? '—',
-                        address:  data.address  ?? '—',
-                    },
-                    triggeredAt:   data.triggered_at,
-                    nearestHazard: findNearestHazard(coords, hazards),
-                }];
+                return [...prev, toEmergencyAlert(data, hazards)];
             });
         });
 
@@ -275,8 +410,22 @@ export default function MapPage({ hazards }: MapPageProps) {
         };
     }, [hazards]);
 
-    const handleResolveEmergency = (id: string) => {
+    const handleResolveEmergency = async (id: string) => {
+        // Optimistically clear it from the live panel immediately, then
+        // persist the resolution — a failed request re-adds it so the admin
+        // doesn't lose track of a still-pending alert.
+        const emergency = activeEmergencies.find(e => e.id === id);
         setActiveEmergencies(prev => prev.filter(e => e.id !== id));
+
+        try {
+            await axios.put(route('sos-alerts.resolve', id));
+        } catch {
+            if (emergency) setActiveEmergencies(prev => [...prev, emergency]);
+            toast.error({
+                title: 'Failed to resolve emergency',
+                description: 'The alert is still marked as pending. Please try again.',
+            });
+        }
     };
 
     return (
@@ -383,7 +532,7 @@ export default function MapPage({ hazards }: MapPageProps) {
             </div>
 
             {/* ── Map card ──────────────────────────────────────────── */}
-            <Card className="h-[700px] flex flex-col overflow-hidden border-border/50 shadow-md">
+            <Card className="h-[calc(100vh-420px)] min-h-[420px] flex flex-col overflow-hidden border-border/50 shadow-md">
                 <div className="w-full h-full relative">
                     <Map
                         styles={{ light: STYLE_STANDARD, dark: STYLE_STANDARD }}
@@ -404,6 +553,29 @@ export default function MapPage({ hazards }: MapPageProps) {
                             emergencies={activeEmergencies}
                             onResolve={handleResolveEmergency}
                         />
+                        {showHistorical && historicalAlert && (
+                            <>
+                                <HistoricalAlertFlyTo coords={historicalAlert.coords} />
+                                <MapMarker
+                                    longitude={historicalAlert.coords[0]}
+                                    latitude={historicalAlert.coords[1]}
+                                >
+                                    <MarkerContent>
+                                        <div className="w-4 h-4 rounded-full border-[3px] border-white shadow-md bg-muted-foreground" />
+                                    </MarkerContent>
+                                </MapMarker>
+                                <EmergencyAlertPanel
+                                    emergency={historicalAlert}
+                                    theme={lightPreset}
+                                    isHistorical
+                                    onClose={() => setHistoricalDismissed(true)}
+                                    onResolve={handleResolveHistorical}
+                                />
+                            </>
+                        )}
+                        {showHotlines && (
+                            <EmergencyHotlinesPanel onClose={() => setHotlinesDismissed(true)} />
+                        )}
                         <SearchBox />
                         <MapControls position="top-right" showZoom showCompass />
                     </Map>

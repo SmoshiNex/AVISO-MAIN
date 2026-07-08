@@ -43,4 +43,24 @@ return [
         'key' => env('GEMINI_API_KEY'),
     ],
 
+    'smsapiph' => [
+        'key' => env('SMSAPIPH_KEY'),
+        'url' => env('SMSAPIPH_URL', 'https://smsapiph.onrender.com/api/v1/send/sms'),
+    ],
+
+    'unismsapi' => [
+        'key'       => env('UNISMSAPI_KEY'),
+        'url'       => env('UNISMSAPI_URL', 'https://unismsapi.com/api/sms'),
+        'sender_id' => env('UNISMSAPI_SENDER_ID', 'UnisoftDEV'),
+    ],
+
+    'skysms' => [
+        'key' => env('SKYSMS_KEY'),
+        'url' => env('SKYSMS_URL', 'https://skysms.skyio.site/api/v1/sms/send'),
+    ],
+
+    'mapbox' => [
+        'token' => env('VITE_MAPBOX_TOKEN'),
+    ],
+
 ];

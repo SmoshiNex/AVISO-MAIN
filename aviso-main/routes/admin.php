@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\PasswordResetController;
+use App\Http\Middleware\RequireAdminRole;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -9,16 +10,38 @@ Route::middleware('web')->group(function () {
     // Redirect root to login
     Route::redirect('/', '/login');
 
-    // Admin Dashboard (Protected by session auth)
-    Route::middleware('auth')->group(function () {
+    // Admin Dashboard (Protected by session auth + admin role check)
+    Route::middleware(['auth', RequireAdminRole::class])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
-        Route::get('/map', function () {
+        Route::get('/map', function (\Illuminate\Http\Request $request) {
             $activeHazards = \App\Models\HazardLog::where('status', 'active')->get();
             $settings = \App\Models\SystemSetting::instance();
+
+            $focusAlert = null;
+            if ($request->filled('alert')) {
+                $alert = \App\Models\EmergencyAlert::with('user')->find($request->query('alert'));
+                if ($alert) {
+                    $focusAlert = (new \App\Events\EmergencyAlertTriggered($alert))->broadcastWith();
+                }
+            }
+
+            // Currently-pending SOS alerts, serialized with the same transform the
+            // live Reverb broadcast uses. The map seeds these on (re)mount so an
+            // in-progress emergency survives page navigation — Reverb only pushes
+            // *new* events, it never replays one that is already active.
+            $activeAlerts = \App\Models\EmergencyAlert::with('user')
+                ->pending()
+                ->latest('triggered_at')
+                ->get()
+                ->map(fn ($alert) => (new \App\Events\EmergencyAlertTriggered($alert))->broadcastWith())
+                ->values();
+
             return Inertia::render('main/MapPage', [
                 'hazards'               => $activeHazards,
                 'emergencyHazardTypes'  => $settings->emergency_hazard_types,
+                'focusAlert'            => $focusAlert,
+                'activeAlerts'          => $activeAlerts,
             ]);
         })->name('map');
         
@@ -40,6 +63,11 @@ Route::middleware('web')->group(function () {
         Route::get('/users/{user}/emergency-contacts', [\App\Http\Controllers\Admin\EmergencyContactController::class, 'index'])->name('users.emergency-contacts.index');
         Route::post('/users/{user}/emergency-contacts', [\App\Http\Controllers\Admin\EmergencyContactController::class, 'store'])->name('users.emergency-contacts.store');
         Route::delete('/emergency-contacts/{contact}', [\App\Http\Controllers\Admin\EmergencyContactController::class, 'destroy'])->name('users.emergency-contacts.destroy');
+
+        // ── SOS Alert History ──────────────────────────────────────────────
+        Route::get('/sos-alerts', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'index'])->name('sos-alerts.index');
+        Route::get('/sos-alerts/{user}/history', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'history'])->name('sos-alerts.history');
+        Route::put('/sos-alerts/{alert}/resolve', [\App\Http\Controllers\Admin\EmergencyAlertController::class, 'resolve'])->name('sos-alerts.resolve');
 
         // ── Live Rider Tracking (JSON API for the map) ─────────────────────
         Route::get('/api/trips/active', [\App\Http\Controllers\Admin\TripController::class, 'activeRiders'])->name('trips.active');

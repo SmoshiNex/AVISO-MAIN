@@ -8,7 +8,6 @@ use App\Models\PasswordResetOtp;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 
 class RiderAuthService
 {
@@ -36,9 +35,7 @@ class RiderAuthService
                 'email'          => $user->email,
                 'contact_number' => $user->contact_number,
                 'username'       => $user->username,
-                'avatar_url'     => $user->avatar_path
-                    ? url(Storage::disk('public')->url($user->avatar_path))
-                    : null,
+                'avatar_url'     => $user->avatar_url,
             ],
         ];
     }
@@ -58,6 +55,11 @@ class RiderAuthService
                 'last_name'         => $data['last_name'],
                 'username'          => $data['username'],
                 'contact_number'    => $data['contact_number'],
+                'street'            => $data['street'] ?? null,
+                'barangay_id'       => $data['barangay_id'] ?? null,
+                'city_id'           => $data['city_id'] ?? null,
+                'province_id'       => $data['province_id'] ?? null,
+                'region_id'         => $data['region_id'] ?? null,
                 'password'          => Hash::make($data['password']),
                 'role'              => 'rider',
                 'email_verified_at' => null,
@@ -109,9 +111,7 @@ class RiderAuthService
                 'email'          => $user->email,
                 'contact_number' => $user->contact_number,
                 'username'       => $user->username,
-                'avatar_url'     => $user->avatar_path
-                    ? url(Storage::disk('public')->url($user->avatar_path))
-                    : null,
+                'avatar_url'     => $user->avatar_url,
             ],
         ];
     }

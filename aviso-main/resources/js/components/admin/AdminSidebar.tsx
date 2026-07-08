@@ -9,6 +9,7 @@ import {
     LogOut,
     LayoutDashboard,
     Users,
+    Siren,
 } from "lucide-react";
 import {
     Sidebar,
@@ -46,13 +47,18 @@ const navGroups = [
                 url: "/hazards",
                 icon: AlertTriangle,
             },
+            {
+                title: "SOS Alerts",
+                url: "/sos-alerts",
+                icon: Siren,
+            },
         ],
     },
     {
         title: "MANAGEMENT",
         items: [
             {
-                title: "User Management",
+                title: "Riders",
                 url: "/users",
                 icon: Users,
             },

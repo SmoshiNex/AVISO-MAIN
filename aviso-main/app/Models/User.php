@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Yajra\Address\HasAddress;
 
@@ -32,6 +33,7 @@ class User extends Authenticatable
         'avatar_path',
         'password',
         'role',
+        'email_verified_at',
         'street',
         'barangay_id',
         'city_id',
@@ -62,9 +64,26 @@ class User extends Authenticatable
         ];
     }
 
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!$this->avatar_path) {
+            return null;
+        }
+        try {
+            return Storage::disk('s3')->temporaryUrl($this->avatar_path, now()->addDays(7));
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
     public function emergencyContacts(): HasMany
     {
         return $this->hasMany(EmergencyContact::class);
+    }
+
+    public function emergencyAlerts(): HasMany
+    {
+        return $this->hasMany(EmergencyAlert::class);
     }
 
     public function trips(): HasMany

@@ -91,6 +91,16 @@ class UserService
         return $user->update($data);
     }
 
+    public function updateAvatar(User $user, string $path): void
+    {
+        $user->update(['avatar_path' => $path]);
+    }
+
+    public function updatePassword(User $user, string $newPassword): void
+    {
+        $user->update(['password' => Hash::make($newPassword)]);
+    }
+
     private function computeAddress(array $data): array
     {
         if (empty($data['barangay_id'])) {
