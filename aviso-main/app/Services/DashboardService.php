@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardService
 {
+    private const TOP_BARANGAY_LIMIT = 3;
+
     public function getMetrics(): array
     {
         // 1. Stat Cards
@@ -116,6 +118,37 @@ class DashboardService
             'hazardTypesData' => $hazardTypesData,
             'detectionAccuracyData' => $detectionAccuracyData,
             'hazardsOverTimeData' => $hazardsOverTimeData,
+            'topBarangayHazards' => $this->getTopHazardBarangays(),
         ];
+    }
+
+    /**
+     * Top barangays ranked by the number of physical road hazards recorded in
+     * their area. One grouped query, pivoted in PHP — same shape as the 7-day
+     * trend above. Barangays come from hazard_logs.area, which is resolved from
+     * GPS coordinates when the hazard is ingested.
+     *
+     * @return array<int, array{area: string, potholes: int, roadBarriers: int, roadExcavation: int, total: int}>
+     */
+    private function getTopHazardBarangays(): array
+    {
+        $raw = HazardLog::roadHazards()
+            ->where('area', '!=', 'Unknown')
+            ->select('area', 'type', DB::raw('count(*) as count'))
+            ->groupBy('area', 'type')
+            ->get();
+
+        return $raw->groupBy('area')
+            ->map(fn ($rows, $area) => [
+                'area'           => $area,
+                'potholes'       => (int) $rows->where('type', HazardLog::TYPE_POTHOLE)->sum('count'),
+                'roadBarriers'   => (int) $rows->where('type', HazardLog::TYPE_ROAD_BARRIER)->sum('count'),
+                'roadExcavation' => (int) $rows->where('type', HazardLog::TYPE_ROAD_EXCAVATION)->sum('count'),
+                'total'          => (int) $rows->sum('count'),
+            ])
+            ->sortByDesc('total')
+            ->take(self::TOP_BARANGAY_LIMIT)
+            ->values()
+            ->toArray();
     }
 }

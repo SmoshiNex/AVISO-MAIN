@@ -4,6 +4,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        {{-- Laravel Echo reads this to authorise private-channel subscriptions
+             against /broadcasting/auth, which sits behind CSRF protection. --}}
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+
         <title inertia>{{ config('app.name', 'AVISO') }}</title>
         <link rel="icon" type="image/png" href="/logo.png">
 

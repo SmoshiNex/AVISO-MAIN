@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { UserStats } from './components/users/UserStats';
@@ -19,7 +20,7 @@ interface PageProps {
 
 export default function Users({ users, stats, filters }: PageProps) {
     return (
-        <AdminLayout>
+        <>
             <Head title="Riders" />
 
             {/* Header */}
@@ -37,6 +38,11 @@ export default function Users({ users, stats, filters }: PageProps) {
                 filters={filters} 
             />
             
-        </AdminLayout>
+        </>
     );
 }
+
+// Persistent layout: Inertia keeps AdminLayout mounted across navigation only
+// when it is assigned here, which is what lets the global SOS subscription and
+// alarm survive a page change.
+Users.layout = (page: ReactNode) => <AdminLayout>{page}</AdminLayout>;

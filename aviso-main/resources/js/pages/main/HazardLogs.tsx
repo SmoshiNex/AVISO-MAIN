@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ export default function HazardLogs({ hazards, stats, areaCounts, filters, types,
     };
 
     return (
-        <AdminLayout>
+        <>
             <Head title="Hazard Logs" />
 
             {/* Header */}
@@ -84,6 +85,11 @@ export default function HazardLogs({ hazards, stats, areaCounts, filters, types,
                 areas={areas} 
             />
             
-        </AdminLayout>
+        </>
     );
 }
+
+// Persistent layout: Inertia keeps AdminLayout mounted across navigation only
+// when it is assigned here, which is what lets the global SOS subscription and
+// alarm survive a page change.
+HazardLogs.layout = (page: ReactNode) => <AdminLayout>{page}</AdminLayout>;

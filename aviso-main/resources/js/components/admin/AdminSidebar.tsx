@@ -20,9 +20,11 @@ import {
     SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
+    SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useSosAlerts } from "@/components/sos/SosAlertProvider";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -76,10 +78,15 @@ const navGroups = [
     },
 ];
 
+/** Nav entries that carry the unresolved-SOS count. */
+const SOS_BADGED_URLS = ["/map", "/sos-alerts"];
+
 export default function AdminSidebar() {
     const { url, props } = usePage<any>();
     const user = props.auth?.user;
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+    const { alerts } = useSosAlerts();
+    const sosCount = alerts.length;
 
     const executeLogout = () => {
         toast.setPending("info", "You have been successfully logged out.");
@@ -143,6 +150,7 @@ export default function AdminSidebar() {
                             <SidebarMenu>
                                 {group.items.map((item) => {
                                     const isActive = item.url !== "#" && url.startsWith(item.url);
+                                    const showSosCount = sosCount > 0 && SOS_BADGED_URLS.includes(item.url);
                                     return (
                                         <SidebarMenuItem key={item.title}>
                                             <SidebarMenuButton
@@ -158,6 +166,11 @@ export default function AdminSidebar() {
                                                     <span>{item.title}</span>
                                                 </Link>
                                             </SidebarMenuButton>
+                                            {showSosCount ? (
+                                                <SidebarMenuBadge className="bg-red-500 text-white font-bold">
+                                                    {sosCount}
+                                                </SidebarMenuBadge>
+                                            ) : null}
                                         </SidebarMenuItem>
                                     );
                                 })}

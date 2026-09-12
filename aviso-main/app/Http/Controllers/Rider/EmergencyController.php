@@ -21,6 +21,7 @@ class EmergencyController extends Controller
             Auth::user(),
             $request->latitude,
             $request->longitude,
+            $request->input('triggered_at'),
         );
 
         return response()->json([

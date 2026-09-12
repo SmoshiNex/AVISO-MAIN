@@ -9,7 +9,6 @@ import {
     Moon,
     Sunset,
     Sunrise,
-    Car,
     Filter,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -47,7 +46,6 @@ export function MapController({
     const [bearing, setBearing] = useState(0);
     const [is3D, setIs3D] = useState(false);
     const [showHeatmap, setShowHeatmap] = useState(false);
-    const [showTraffic, setShowTraffic] = useState(false);
 
     // 360° Auto-Rotate state
     const [isRotating, setIsRotating] = useState(false);
@@ -63,49 +61,6 @@ export function MapController({
         if (!map || !isLoaded || initRef.current) return;
         initRef.current = true;
         map.jumpTo({ center: ZAMBOANGA, zoom: 14 });
-
-        // Add Mapbox Live Traffic Source
-        if (!map.getSource("traffic")) {
-            map.addSource("traffic", {
-                type: "vector",
-                url: "mapbox://mapbox.mapbox-traffic-v1",
-            });
-
-            map.addLayer({
-                id: "traffic-line",
-                type: "line",
-                source: "traffic",
-                "source-layer": "traffic",
-                layout: { visibility: "none" }, // hidden by default
-                paint: {
-                    "line-color": [
-                        "match",
-                        ["get", "congestion"],
-                        "low",
-                        "#4ade80", // green
-                        "moderate",
-                        "#eab308", // yellow
-                        "heavy",
-                        "#ef4444", // red
-                        "severe",
-                        "#7f1d1d", // dark red
-                        "#4ade80", // default green
-                    ],
-                    "line-width": [
-                        "interpolate",
-                        ["linear"],
-                        ["zoom"],
-                        12,
-                        2,
-                        15,
-                        5,
-                        20,
-                        8,
-                    ],
-                    "line-opacity": 0.8,
-                },
-            }); // Insert on top
-        }
 
         // Add Heatmap Source & Layer
         if (!map.getSource("hazards-source")) {
@@ -300,16 +255,6 @@ export function MapController({
         );
     }, [showHeatmap, map, isLoaded]);
 
-    // Apply Traffic Visibility
-    useEffect(() => {
-        if (!map || !isLoaded || !map.getLayer("traffic-line")) return;
-        map.setLayoutProperty(
-            "traffic-line",
-            "visibility",
-            showTraffic ? "visible" : "none",
-        );
-    }, [showTraffic, map, isLoaded]);
-
     // Track camera values for overlay
     useEffect(() => {
         if (!map || !isLoaded) return;
@@ -413,21 +358,6 @@ export function MapController({
                 >
                     <Layers className="mr-1.5 h-4 w-4" />
                     Heatmap
-                </Button>
-
-                {/* Traffic Toggle */}
-                <Button
-                    size="sm"
-                    variant={showTraffic ? "default" : "ghost"}
-                    onClick={() => setShowTraffic(!showTraffic)}
-                    className={
-                        showTraffic
-                            ? "bg-green-600 hover:bg-green-700 text-white"
-                            : ""
-                    }
-                >
-                    <Car className="mr-1.5 h-4 w-4" />
-                    Traffic
                 </Button>
 
                 <div className="w-px h-5 bg-border mx-1" />
@@ -556,11 +486,6 @@ export function MapController({
                 {showHeatmap && (
                     <div className="text-orange-500 font-semibold">
                         🔥 Heatmap Active
-                    </div>
-                )}
-                {showTraffic && (
-                    <div className="text-green-500 font-semibold">
-                        🚦 Traffic Layer Active
                     </div>
                 )}
             </div>

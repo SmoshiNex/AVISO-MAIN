@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Head, router } from "@inertiajs/react";
 import AdminLayout from "@/layouts/AdminLayout";
 import { toast } from "@/lib/toast";
+import { useSosAlerts } from "@/components/sos/SosAlertProvider";
 import { SosStats } from "./components/sos/SosStats";
 import { SosTable } from "./components/sos/SosTable";
 import { EmergencyHotlinesPanel } from "./components/sos/EmergencyHotlinesPanel";
@@ -25,20 +26,30 @@ interface PageProps {
 }
 
 export default function SosLogs({ riders, stats, filters }: PageProps) {
+    // The global provider owns the only riders.live subscription — this page
+    // used to open a second one and tear the shared channel down on unmount.
+    // Reacting to the alert count keeps the table and stats in step with both
+    // incoming alerts and resolutions made elsewhere.
+    const { alerts } = useSosAlerts();
+    const alertCount = alerts.length;
+    const previousCountRef = useRef(alertCount);
+
     useEffect(() => {
-        const channel = window.Echo.channel("riders.live");
-        channel.listen(".emergency.triggered", (data: { rider_name?: string; username?: string }) => {
+        if (alertCount === previousCountRef.current) return;
+
+        if (alertCount > previousCountRef.current) {
+            const newest = alerts[0];
             toast.info({
                 title: "New SOS Alert",
-                description: `${data.rider_name ?? data.username ?? "A rider"} triggered an emergency.`,
+                description: `${newest?.rider_name ?? newest?.username ?? "A rider"} triggered an emergency.`,
             });
-            router.reload({ only: ["riders", "stats"] });
-        });
+        }
 
-        return () => {
-            window.Echo.leave("riders.live");
-        };
-    }, []);
+        previousCountRef.current = alertCount;
+        router.reload({ only: ["riders", "stats"] });
+        // `alerts` is read only to name the newest rider; the count is the trigger.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [alertCount]);
 
     return (
         <>

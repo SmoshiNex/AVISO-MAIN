@@ -111,6 +111,16 @@ class HazardLog extends Model
         return $query->where('area', $area);
     }
 
+    /** Scope: only the three physical road hazard types */
+    public function scopeRoadHazards(Builder $query): Builder
+    {
+        return $query->whereIn('type', [
+            self::TYPE_POTHOLE,
+            self::TYPE_ROAD_BARRIER,
+            self::TYPE_ROAD_EXCAVATION,
+        ]);
+    }
+
     /** Scope: search by haz_code or rider_code */
     public function scopeSearch(Builder $query, string $term): Builder
     {

@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { Head } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
@@ -11,6 +12,8 @@ import {
 } from '@/components/ui/chart';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts';
 import { ChartConfig } from '@/components/ui/chart';
+import { TopBarangayHazards } from './components/dashboard/TopBarangayHazards';
+import { type BarangayHazardCount } from '@/types/models';
 
 const hazardsChartConfig = {
     potholes:           { label: 'Potholes',               color: HAZARD_CHART_COLORS.potholes           },
@@ -29,11 +32,41 @@ const HAZARD_TYPE_COLORS = Object.values(HAZARD_CHART_COLORS);
 const detectionAccuracyChartConfig = {
     accuracy: { label: 'Accuracy %', color: 'var(--primary)' },
 } satisfies ChartConfig;
+
+interface DashboardStat {
+    label: string;
+    value: string;
+    sub: string;
+    subVariant: 'destructive' | 'muted';
+}
+
+interface HazardTypeDatum {
+    name: string;
+    value: number;
+}
+
+interface AccuracyDatum {
+    name: string;
+    accuracy: number;
+}
+
+interface HazardsOverTimeDatum {
+    day: string;
+    potholes: number;
+    roadExcavation: number;
+    roadBarriers: number;
+    trafficSigns: number;
+    trafficLightRed: number;
+    trafficLightOrange: number;
+    trafficLightGreen: number;
+}
+
 interface DashboardProps {
-    dashboardStats: any[];
-    hazardTypesData: any[];
-    detectionAccuracyData: any[];
-    hazardsOverTimeData: any[];
+    dashboardStats: DashboardStat[];
+    hazardTypesData: HazardTypeDatum[];
+    detectionAccuracyData: AccuracyDatum[];
+    hazardsOverTimeData: HazardsOverTimeDatum[];
+    topBarangayHazards: BarangayHazardCount[];
 }
 
 export default function Dashboard({
@@ -41,9 +74,10 @@ export default function Dashboard({
     hazardTypesData,
     detectionAccuracyData,
     hazardsOverTimeData,
+    topBarangayHazards,
 }: DashboardProps) {
     return (
-        <AdminLayout>
+        <>
             <Head title="Metrics" />
 
             <div className="mb-6">
@@ -183,7 +217,15 @@ export default function Dashboard({
                         </Card>
                     </div>
                 </div>
+
+                {/* Ranked Barangays */}
+                <TopBarangayHazards data={topBarangayHazards} />
             </>
-        </AdminLayout>
+        </>
     );
 }
+
+// Persistent layout: Inertia keeps AdminLayout mounted across navigation only
+// when it is assigned here, which is what lets the global SOS subscription and
+// alarm survive a page change.
+Dashboard.layout = (page: ReactNode) => <AdminLayout>{page}</AdminLayout>;

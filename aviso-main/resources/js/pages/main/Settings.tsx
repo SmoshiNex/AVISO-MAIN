@@ -1,5 +1,5 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { FormEvent } from 'react';
+import { FormEvent, type ReactNode } from 'react';
 import { useTheme } from 'next-themes';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -129,7 +129,7 @@ export default function Settings({ systemSettings }: SettingsProps) {
     };
 
     return (
-        <AdminLayout>
+        <>
             <Head title="Settings" />
 
             <div className="mb-6">
@@ -518,7 +518,11 @@ export default function Settings({ systemSettings }: SettingsProps) {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </AdminLayout>
+        </>
     );
 }
 
+// Persistent layout: Inertia keeps AdminLayout mounted across navigation only
+// when it is assigned here, which is what lets the global SOS subscription and
+// alarm survive a page change.
+Settings.layout = (page: ReactNode) => <AdminLayout>{page}</AdminLayout>;

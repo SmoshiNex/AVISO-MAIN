@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Events\EmergencyAlertResolved;
 use App\Events\EmergencyAlertTriggered;
 use App\Models\EmergencyAlert;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
 
 class EmergencyAlertService
 {
@@ -17,8 +20,40 @@ class EmergencyAlertService
         //
     }
 
-    public function triggerSos(User $rider, float $lat, float $lng): EmergencyAlert
-    {
+    /**
+     * Raise (or reuse) an SOS alert for a rider.
+     *
+     * $triggeredAt is when the incident happened on the device. It is the
+     * idempotency key: the mobile app retries an unsent SOS on a timer, and
+     * without this every retry that lands after an admin resolved the alert
+     * would insert a fresh pending row and re-SMS every contact.
+     */
+    public function triggerSos(
+        User $rider,
+        float $lat,
+        float $lng,
+        ?string $triggeredAt = null,
+    ): EmergencyAlert {
+        $incidentAt = $triggeredAt ? Carbon::parse($triggeredAt) : now();
+
+        // Idempotency: the same incident re-sent by the app's retry queue must
+        // never create a second alert, regardless of the first one's status.
+        // Deliberately not scoped to pending — that was the bug. Mirrors the
+        // ±5s window HazardLogService::processIncomingHazard already uses.
+        $duplicate = EmergencyAlert::with('user')
+            ->where('user_id', $rider->id)
+            ->whereBetween('triggered_at', [
+                $incidentAt->copy()->subSeconds(5),
+                $incidentAt->copy()->addSeconds(5),
+            ])
+            ->first();
+
+        if ($duplicate) {
+            // Return the existing record untouched: no re-broadcast (the admin
+            // may have already handled it) and no second round of SMS.
+            return $duplicate;
+        }
+
         // If rider already has a pending alert, update coords and re-broadcast the same record
         // instead of creating a new one — this keeps the admin map from getting duplicate pins
         // when crash detection fires multiple times for the same incident. Emergency contacts
@@ -31,7 +66,7 @@ class EmergencyAlertService
 
         if ($existing) {
             $existing->update(['latitude' => $lat, 'longitude' => $lng]);
-            broadcast(new EmergencyAlertTriggered($existing));
+            $this->broadcastQuietly(new EmergencyAlertTriggered($existing));
             $this->notifyEmergencyContacts($rider, $lat, $lng);
             return $existing;
         }
@@ -41,12 +76,12 @@ class EmergencyAlertService
             'rider_code'   => $rider->username ?? (string) $rider->id,
             'latitude'     => $lat,
             'longitude'    => $lng,
-            'triggered_at' => now(),
+            'triggered_at' => $incidentAt,
             'status'       => EmergencyAlert::STATUS_PENDING,
         ]);
 
         $alert->setRelation('user', $rider);
-        broadcast(new EmergencyAlertTriggered($alert));
+        $this->broadcastQuietly(new EmergencyAlertTriggered($alert));
 
         $this->notifyEmergencyContacts($rider, $lat, $lng);
 
@@ -148,7 +183,53 @@ class EmergencyAlertService
             'resolved_at' => now(),
         ]);
 
+        // Tell every connected admin view to drop it. Without this, a second
+        // tab or a second operator keeps a red pin and a looping alarm.
+        $this->broadcastQuietly(new EmergencyAlertResolved($alert));
+
         return $alert;
+    }
+
+    /**
+     * Every alert still needing attention, serialized with the exact same
+     * transform the live Reverb broadcast uses so the seeded list and the
+     * pushed events share one shape.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getUnresolvedForBroadcast(): array
+    {
+        return EmergencyAlert::with('user')
+            ->unresolved()
+            ->latest('triggered_at')
+            ->get()
+            ->map(fn (EmergencyAlert $alert) => (new EmergencyAlertTriggered($alert))->broadcastWith())
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Broadcast without letting a dead WebSocket server fail the request.
+     *
+     * These events use ShouldBroadcastNow, so they are dispatched inline over
+     * HTTP to Reverb. If Reverb is down the Pusher client throws, and because
+     * the database write has already committed the caller would report failure
+     * for work that actually succeeded — an admin would be told "failed to
+     * resolve" for an alert that is resolved, and the UI would put the alert
+     * back. The database is the source of truth; live push is a convenience, so
+     * a delivery failure is logged and swallowed. Anyone connected picks the
+     * change up from shared props on their next page load.
+     */
+    private function broadcastQuietly(object $event): void
+    {
+        try {
+            broadcast($event);
+        } catch (\Throwable $e) {
+            Log::warning('[EmergencyAlertService] Broadcast failed', [
+                'event' => class_basename($event),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function getAdminStats(): array

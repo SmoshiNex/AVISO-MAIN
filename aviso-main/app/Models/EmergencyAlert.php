@@ -38,6 +38,15 @@ class EmergencyAlert extends Model
         return $query->where('status', self::STATUS_PENDING);
     }
 
+    /** Scope: alerts that still need attention — pending or acknowledged. */
+    public function scopeUnresolved(Builder $query): Builder
+    {
+        return $query->whereIn('status', [
+            self::STATUS_PENDING,
+            self::STATUS_ACKNOWLEDGED,
+        ]);
+    }
+
     public function scopeByRider(Builder $query, string $riderCode): Builder
     {
         return $query->where('rider_code', $riderCode);

@@ -26,22 +26,15 @@ Route::middleware('web')->group(function () {
                 }
             }
 
-            // Currently-pending SOS alerts, serialized with the same transform the
-            // live Reverb broadcast uses. The map seeds these on (re)mount so an
-            // in-progress emergency survives page navigation — Reverb only pushes
-            // *new* events, it never replays one that is already active.
-            $activeAlerts = \App\Models\EmergencyAlert::with('user')
-                ->pending()
-                ->latest('triggered_at')
-                ->get()
-                ->map(fn ($alert) => (new \App\Events\EmergencyAlertTriggered($alert))->broadcastWith())
-                ->values();
-
+            // Note: unresolved alerts are NOT passed here. They arrive through
+            // the `sos` prop HandleInertiaRequests shares with every admin page,
+            // so the global banner, the sidebar badge and this map all read one
+            // list. `focusAlert` stays local — it is the map-only history link,
+            // and it deliberately loads any alert by id regardless of status.
             return Inertia::render('main/MapPage', [
                 'hazards'               => $activeHazards,
                 'emergencyHazardTypes'  => $settings->emergency_hazard_types,
                 'focusAlert'            => $focusAlert,
-                'activeAlerts'          => $activeAlerts,
             ]);
         })->name('map');
         

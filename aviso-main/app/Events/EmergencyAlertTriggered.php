@@ -3,7 +3,7 @@
 namespace App\Events;
 
 use App\Models\EmergencyAlert;
-use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -21,7 +21,7 @@ class EmergencyAlertTriggered implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('riders.live'),
+            new PrivateChannel('riders.live'),
         ];
     }
 

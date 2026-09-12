@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Map, MapControls, MapMarker, MarkerContent, useMap } from '@/components/ui/map';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, Cone, Construction, MapPin, ShieldAlert, StopCircle } from 'lucide-react';
 
 // Subcomponents
@@ -15,7 +15,8 @@ import { EmergencyAlertPanel } from './components/map/EmergencyAlertPanel';
 import { EmergencyHotlinesPanel } from './components/map/EmergencyHotlinesPanel';
 import { getHazardColor, getHazardTailwindColors } from '@/lib/hazards';
 import { toast } from '@/lib/toast';
-import { type HazardLog } from '@/types/models';
+import { useSosAlerts } from '@/components/sos/SosAlertProvider';
+import { type HazardLog, type SosAlertPayload } from '@/types/models';
 import { type EmergencyAlert, type LngLat } from './components/map/riderData';
 import { findNearestHazard } from './components/map/riderUtils';
 
@@ -34,29 +35,9 @@ const HAZARD_STATS: {
     { types: ['Traffic Light Red', 'Traffic Light Orange', 'Traffic Light Green'],         label: 'Traffic Lights', icon: <StopCircle className="w-5 h-5" />,   description: 'Red / Orange / Green' },
 ];
 
-/** Shape returned by `EmergencyAlertTriggered::broadcastWith()` — used both
- * for live Echo events and for the historical "open on map" link from SOS
- * Alerts, so both paths go through the exact same transform. */
-interface SosAlertPayload {
-    id: number;
-    rider_code: string;
-    latitude: number;
-    longitude: number;
-    triggered_at: string;
-    status: string;
-    rider_name: string;
-    username: string;
-    contact: string;
-    address: string;
-}
-
 interface MapPageProps {
     hazards: HazardLog[];
     focusAlert?: SosAlertPayload | null;
-    /** SOS alerts still pending at page load. Seeded into the live emergency
-     * state on mount so an in-progress emergency survives navigating away and
-     * back — the Reverb channel only pushes new events, never active ones. */
-    activeAlerts?: SosAlertPayload[];
 }
 
 function toEmergencyAlert(data: SosAlertPayload, hazards: HazardLog[]): EmergencyAlert {
@@ -124,7 +105,7 @@ function RealTimeClock() {
 
 
 
-export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPageProps) {
+export default function MapPage({ hazards, focusAlert }: MapPageProps) {
     // Map theme preset — respects localStorage preference set in Settings
     const [lightPreset, setLightPreset] = useState<'day' | 'night' | 'dusk' | 'dawn'>(
         () => (localStorage.getItem('aviso_map_theme') as 'day' | 'night' | 'dusk' | 'dawn') ?? 'day'
@@ -140,123 +121,13 @@ export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPagePr
     const filteredHazards = useMemo(() => hazards.filter(h => activeFilters.includes(h.type)), [hazards, activeFilters]);
     const availableTypes = useMemo(() => Array.from(new Set(hazards.map(h => h.type))), [hazards]);
 
-    // ── Jarvis audio ─────────────────────────────────────────────────────
-    const audioCtxRef       = useRef<AudioContext | null>(null);
-    const sosBufRef         = useRef<AudioBuffer | null>(null);
-    const alarmSrcRef       = useRef<AudioBufferSourceNode | null>(null);
-    const riderAlertSrcRef  = useRef<AudioBufferSourceNode | null>(null);
-    const alarmActiveRef    = useRef(false);
-    const pendingAlarmRef   = useRef(false);
-    const startLoopRef      = useRef<() => void>(() => {});
-
-    useEffect(() => {
-        let initing = false;
-
-        const tryInit = async () => {
-            if (audioCtxRef.current || initing) return;
-            initing = true;
-            console.log('[AVISO AUDIO] tryInit — creating AudioContext with user gesture');
-            try {
-                const ctx = new AudioContext();
-                console.log('[AVISO AUDIO] AudioContext created, state:', ctx.state);
-
-                // Race resume against 2 s — prevents initing from staying true if Chrome
-                // queues the promise (e.g. called without a real gesture somehow).
-                await Promise.race([
-                    ctx.resume(),
-                    new Promise<void>((_, reject) =>
-                        setTimeout(() => reject(new Error('resume timeout')), 2000)
-                    ),
-                ]);
-                console.log('[AVISO AUDIO] After resume(), state:', ctx.state);
-
-                if (ctx.state !== 'running') {
-                    console.warn('[AVISO AUDIO] Still suspended — closing and waiting for next gesture.');
-                    await ctx.close();
-                    initing = false;
-                    return;
-                }
-
-                audioCtxRef.current = ctx;
-                console.log('[AVISO AUDIO] AudioContext ready ✓');
-                const res = await fetch('/jarvis/sos', { credentials: 'same-origin' });
-                console.log('[AVISO AUDIO] /jarvis/sos response status:', res.status);
-                if (res.ok) sosBufRef.current = await ctx.decodeAudioData(await res.arrayBuffer());
-                console.log('[AVISO AUDIO] SOS buffer loaded:', !!sosBufRef.current);
-                if (pendingAlarmRef.current) {
-                    pendingAlarmRef.current = false;
-                    startLoopRef.current();
-                }
-            } catch (err) {
-                console.warn('[AVISO AUDIO] Error in tryInit:', err);
-                initing = false;
-            }
-        };
-
-        console.log('[AVISO AUDIO] Waiting for first user gesture to init AudioContext.');
-        toast.info({
-            title: 'Click to enable audio',
-            description: 'Click anywhere on the map to activate emergency audio alerts.',
-        });
-
-        // Do NOT call tryInit() on mount — Chrome blocks AudioContext without a gesture
-        // and the pending ctx.resume() promise keeps initing=true, blocking all future clicks.
-        document.addEventListener('click',      tryInit);
-        document.addEventListener('keydown',    tryInit);
-        document.addEventListener('touchstart', tryInit);
-        return () => {
-            document.removeEventListener('click',      tryInit);
-            document.removeEventListener('keydown',    tryInit);
-            document.removeEventListener('touchstart', tryInit);
-        };
-    }, []);
-
-    /** Stop any currently playing rider-alert announcement. */
-    const stopRiderAlert = () => {
-        try { riderAlertSrcRef.current?.stop(); } catch {}
-        riderAlertSrcRef.current = null;
-    };
-
-    const startAlarmLoop = () => {
-        if (!audioCtxRef.current || !sosBufRef.current) {
-            pendingAlarmRef.current = true; // retry on next user interaction
-            return;
-        }
-        if (alarmActiveRef.current) return;
-        alarmActiveRef.current = true;
-
-        const loop = () => {
-            if (!alarmActiveRef.current || !audioCtxRef.current || !sosBufRef.current) return;
-            const src = audioCtxRef.current.createBufferSource();
-            src.buffer = sosBufRef.current;
-            src.connect(audioCtxRef.current.destination);
-            src.onended = () => {
-                alarmSrcRef.current = null;
-                if (alarmActiveRef.current) setTimeout(loop, 3000);
-            };
-            alarmSrcRef.current = src;
-            src.start();
-        };
-        loop();
-    };
-    startLoopRef.current = startAlarmLoop; // keep ref in sync on every render
-
-    const stopAlarmLoop = () => {
-        alarmActiveRef.current = false;
-        pendingAlarmRef.current = false;
-        stopRiderAlert();
-        try { alarmSrcRef.current?.stop(); } catch {}
-        alarmSrcRef.current = null;
-    };
-
-    // Emergency alert state — drives the "SOS Alerts X ACTIVE" banner, the map
-    // markers, and the alarm audio loop. Seeded on mount from the backend's
-    // still-PENDING alerts (so an active emergency survives page navigation),
-    // then kept live by Reverb broadcasts. Only genuinely-pending alerts are
-    // seeded — a resolved one is never restored here, so it can't be misreported
-    // as currently active.
-    const [activeEmergencies, setActiveEmergencies] = useState<EmergencyAlert[]>(
-        () => (activeAlerts ?? []).map(a => toEmergencyAlert(a, hazards)),
+    // Live emergencies come from the global SOS provider, which owns the single
+    // riders.live subscription and the alarm audio for the whole admin session.
+    // This page only enriches each alert with its nearest hazard for display.
+    const { alerts, resolveAlert } = useSosAlerts();
+    const activeEmergencies = useMemo<EmergencyAlert[]>(
+        () => alerts.map(a => toEmergencyAlert(a, hazards)),
+        [alerts, hazards],
     );
 
     // A historical alert opened via an SOS Alerts "open on map" link
@@ -279,7 +150,7 @@ export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPagePr
         prevActiveCountRef.current = activeEmergencies.length;
     }, [activeEmergencies.length]);
 
-    // A focused alert opened via ?alert=id that is ALSO a currently-pending
+    // A focused alert opened via ?alert=id that is ALSO a currently-unresolved
     // (seeded) emergency should render only as the live active emergency, not
     // additionally as a gray historical marker — otherwise the same alert shows
     // up twice on the map.
@@ -288,15 +159,22 @@ export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPagePr
         !historicalDismissed &&
         !activeEmergencies.some(e => e.id === historicalAlert.id);
 
-    const showHotlines =
-        (activeEmergencies.length > 0 || showHistorical) &&
-        !hotlinesDismissed;
+    // Only a LIVE emergency may raise the hotlines popup. A resolved record
+    // opened from history is a read-only record, and treating it as an unfolding
+    // emergency is what made a resolved alert look like it had come back.
+    const showHotlines = activeEmergencies.length > 0 && !hotlinesDismissed;
 
     const handleResolveHistorical = async () => {
         if (!historicalAlert) return;
         try {
             await axios.put(route('sos-alerts.resolve', historicalAlert.id));
             setHistoricalAlert(prev => (prev ? { ...prev, status: 'resolved' } : prev));
+
+            // Strip ?alert=<id> from the address bar. The backend serves that
+            // alert by id regardless of status, so leaving the param in place
+            // meant a refresh re-opened the record we just resolved.
+            window.history.replaceState({}, '', window.location.pathname);
+
             toast.success({ title: 'Alert marked as resolved' });
         } catch {
             toast.error({
@@ -306,130 +184,10 @@ export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPagePr
         }
     };
 
-    // Stop alarm when all emergencies are resolved
-    useEffect(() => {
-        if (activeEmergencies.length === 0) stopAlarmLoop();
-    }, [activeEmergencies.length]);
 
-    // On mount: if the page loaded with an already-active (seeded) emergency —
-    // i.e. the admin navigated back mid-SOS — resume the alarm so the audio
-    // matches the restored map state. startAlarmLoop() queues itself until the
-    // AudioContext is unlocked by the next user gesture if it isn't ready yet.
-    // Also stop the loop on unmount so navigating away never leaves a detached
-    // audio loop running that later can't be silenced.
-    useEffect(() => {
-        if (activeEmergencies.length > 0) startAlarmLoop();
-        return () => stopAlarmLoop();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        const pusher = (window.Echo as any).connector?.pusher;
-        if (pusher) {
-            pusher.connection.bind('state_change', (states: { previous: string; current: string }) => {
-                console.log(`[AVISO WS] ${states.previous} → ${states.current}`);
-            });
-            pusher.connection.bind('connected', () => {
-                console.log('[AVISO WS] Connected to Reverb ✓  socket_id:', pusher.connection.socket_id);
-            });
-            pusher.connection.bind('disconnected', () => {
-                console.warn('[AVISO WS] Disconnected from Reverb');
-            });
-            pusher.connection.bind('error', (err: unknown) => {
-                console.error('[AVISO WS] Connection error:', err);
-            });
-        }
-
-        if (pusher) {
-            console.log('[AVISO WS] Current connection state:', pusher.connection.state);
-        }
-        console.log('[AVISO WS] Subscribing to channel: riders.live');
-        const channel = window.Echo.channel('riders.live');
-        channel.listen('.emergency.triggered', (data: SosAlertPayload) => {
-            console.log('[AVISO WS] 🚨 emergency.triggered received:', data);
-            const coords: LngLat = [Number(data.longitude), Number(data.latitude)];
-            const riderName = data.rider_name ?? data.rider_code;
-
-            const ctx = audioCtxRef.current;
-            if (ctx) {
-                // Stop any currently playing audio to prevent overlapping voices
-                stopRiderAlert();
-                stopAlarmLoop();
-
-                fetch(`/jarvis/rider-alert?name=${encodeURIComponent(riderName)}`, { credentials: 'same-origin' })
-                    .then(res => res.ok ? res.arrayBuffer() : Promise.reject(res.status))
-                    .then(buf => ctx.decodeAudioData(buf))
-                    .then(buffer => {
-                        // Double-check nothing started playing while we were fetching
-                        stopRiderAlert();
-
-                        const src = ctx.createBufferSource();
-                        src.buffer = buffer;
-                        src.connect(ctx.destination);
-                        riderAlertSrcRef.current = src;
-                        src.onended = () => {
-                            riderAlertSrcRef.current = null;
-                            startLoopRef.current();
-                        };
-                        src.start();
-                    })
-                    .catch(() => startLoopRef.current());
-            } else {
-                startAlarmLoop();
-            }
-
-            setActiveEmergencies(prev => {
-                const existingIndex = prev.findIndex(e => e.riderId === data.rider_code);
-                if (existingIndex !== -1) {
-                    const updated = [...prev];
-                    updated[existingIndex] = {
-                        ...updated[existingIndex],
-                        id:          String(data.id),
-                        coords,
-                        triggeredAt: data.triggered_at,
-                        status:      data.status,
-                    };
-                    return updated;
-                }
-                return [...prev, toEmergencyAlert(data, hazards)];
-            });
-        });
-
-        // Update emergency marker position as rider moves after SOS
-        channel.listen('.location.updated', (data: any) => {
-            console.log('[AVISO WS] 📍 location.updated received:', data);
-            const newCoords: LngLat = [parseFloat(data.current_lng), parseFloat(data.current_lat)];
-            setActiveEmergencies(prev =>
-                prev.map(e => e.riderId === data.rider_code ? { ...e, coords: newCoords } : e)
-            );
-        });
-
-        return () => {
-            console.log('[AVISO WS] Leaving channel: riders.live');
-            window.Echo.leave('riders.live');
-        };
-    }, [hazards]);
-
-    const handleResolveEmergency = async (id: string) => {
-        // Optimistically clear it from the live panel immediately, then
-        // persist the resolution — a failed request re-adds it so the admin
-        // doesn't lose track of a still-pending alert.
-        const emergency = activeEmergencies.find(e => e.id === id);
-        setActiveEmergencies(prev => prev.filter(e => e.id !== id));
-
-        try {
-            await axios.put(route('sos-alerts.resolve', id));
-        } catch {
-            if (emergency) setActiveEmergencies(prev => [...prev, emergency]);
-            toast.error({
-                title: 'Failed to resolve emergency',
-                description: 'The alert is still marked as pending. Please try again.',
-            });
-        }
-    };
 
     return (
-        <AdminLayout>
+        <>
             <Head title="Live Map" />
 
             <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -551,7 +309,7 @@ export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPagePr
                             theme={lightPreset}
                             hazards={filteredHazards}
                             emergencies={activeEmergencies}
-                            onResolve={handleResolveEmergency}
+                            onResolve={resolveAlert}
                         />
                         {showHistorical && historicalAlert && (
                             <>
@@ -581,6 +339,11 @@ export default function MapPage({ hazards, focusAlert, activeAlerts }: MapPagePr
                     </Map>
                 </div>
             </Card>
-        </AdminLayout>
+        </>
     );
 }
+
+// Persistent layout: Inertia keeps AdminLayout mounted across navigation only
+// when it is assigned here, which is what lets the global SOS subscription and
+// alarm survive a page change.
+MapPage.layout = (page: ReactNode) => <AdminLayout>{page}</AdminLayout>;

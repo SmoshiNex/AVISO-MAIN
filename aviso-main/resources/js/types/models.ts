@@ -69,3 +69,40 @@ export interface PaginatedData<T> {
     total: number;
     links: { url: string | null; label: string; active: boolean }[];
 }
+
+// Road hazard counts for one barangay, ranked on the dashboard.
+// Keys match HAZARD_CHART_COLORS in lib/hazards.ts so colors need no mapping.
+export interface BarangayHazardCount {
+    area: string;
+    potholes: number;
+    roadBarriers: number;
+    roadExcavation: number;
+    total: number;
+}
+
+/**
+ * Wire shape of an SOS alert — produced by `EmergencyAlertTriggered::broadcastWith()`
+ * on the backend and used by three paths that must agree: the live Reverb
+ * broadcast, the alerts seeded into shared props on page load, and the
+ * `?alert=<id>` historical deep link.
+ */
+export interface SosAlertPayload {
+    id: number;
+    rider_code: string;
+    latitude: number;
+    longitude: number;
+    triggered_at: string;
+    status: string;
+    rider_name: string;
+    username: string;
+    contact: string;
+    address: string;
+}
+
+/** Payload of the `emergency.resolved` broadcast. */
+export interface SosAlertResolvedPayload {
+    id: number;
+    rider_code: string;
+    status: string;
+    resolved_at: string | null;
+}
