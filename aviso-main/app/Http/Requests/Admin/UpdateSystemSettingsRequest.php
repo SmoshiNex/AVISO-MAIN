@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\HazardLog;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateSystemSettingsRequest extends FormRequest
 {
@@ -18,7 +20,7 @@ class UpdateSystemSettingsRequest extends FormRequest
             'items_per_page'           => ['required', 'integer', 'in:10,15,25,50'],
             'default_sort'             => ['required', 'string', 'in:haz_code,type,area,confidence,distance,detected_at'],
             'emergency_hazard_types'   => ['required', 'array', 'min:1'],
-            'emergency_hazard_types.*' => ['string', 'in:Pothole,Road Excavation,Road Barrier,Traffic Sign,Traffic Light Red,Traffic Light Orange,Traffic Light Green'],
+            'emergency_hazard_types.*' => ['string', Rule::in(HazardLog::TYPES)],
         ];
     }
 }

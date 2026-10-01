@@ -1,15 +1,13 @@
 import { Card } from '@/components/ui/card';
 import { getHazardColor } from '@/lib/hazards';
 import { type HazardLog } from '@/types/models';
-import { AlertCircle, Cone, Construction, MapPin, StopCircle } from 'lucide-react';
+import { AlertCircle, Cone, Construction } from 'lucide-react';
 import { useMemo } from 'react';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
     'Pothole': <AlertCircle className="w-4 h-4 text-white" />,
     'Road Excavation': <Construction className="w-4 h-4 text-white" />,
     'Road Barrier': <Cone className="w-4 h-4 text-white" />,
-    'Traffic Sign': <MapPin className="w-4 h-4 text-white" />,
-    'Traffic Light': <StopCircle className="w-4 h-4 text-white" />
 };
 
 interface LiveFeedSidebarProps {

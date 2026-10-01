@@ -30,6 +30,7 @@ export interface HazardLog {
     haz_code: string;
     type: string;
     area: string;
+    barangay_code: string | null;
     latitude: number;
     longitude: number;
     confidence: number;
@@ -68,6 +69,12 @@ export interface PaginatedData<T> {
     per_page: number;
     total: number;
     links: { url: string | null; label: string; active: boolean }[];
+}
+
+// A Zamboanga City barangay (PSGC 10-digit code), as listed in filters.
+export interface Barangay {
+    code: string;
+    name: string;
 }
 
 // Road hazard counts for one barangay, ranked on the dashboard.

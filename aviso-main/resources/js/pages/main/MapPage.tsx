@@ -4,11 +4,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Map, MapControls, MapMarker, MarkerContent, useMap } from '@/components/ui/map';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AlertCircle, Cone, Construction, MapPin, ShieldAlert, StopCircle } from 'lucide-react';
+import { AlertCircle, Cone, Construction, ShieldAlert } from 'lucide-react';
 
 // Subcomponents
 import { SearchBox } from './components/map/SearchBox';
 import { HazardPins } from './components/map/HazardPins';
+import { BarangayBoundaries } from './components/map/BarangayBoundaries';
 import { MapController } from './components/map/MapController';
 import { EmergencyRiders } from './components/map/EmergencyRiders';
 import { EmergencyAlertPanel } from './components/map/EmergencyAlertPanel';
@@ -31,8 +32,6 @@ const HAZARD_STATS: {
     { types: ['Pothole'],                                                                  label: 'Potholes',       icon: <AlertCircle className="w-5 h-5" />,  description: 'Surface defects'    },
     { types: ['Road Excavation'],                                                          label: 'Excavations',    icon: <Construction className="w-5 h-5" />, description: 'Active digging'     },
     { types: ['Road Barrier'],                                                             label: 'Road Barriers',  icon: <Cone className="w-5 h-5" />,         description: 'Blocked lanes'      },
-    { types: ['Traffic Sign'],                                                             label: 'Traffic Signs',  icon: <MapPin className="w-5 h-5" />,       description: 'Signage detected'   },
-    { types: ['Traffic Light Red', 'Traffic Light Orange', 'Traffic Light Green'],         label: 'Traffic Lights', icon: <StopCircle className="w-5 h-5" />,   description: 'Red / Orange / Green' },
 ];
 
 interface MapPageProps {
@@ -117,6 +116,9 @@ export default function MapPage({ hazards, focusAlert }: MapPageProps) {
         const types = Array.from(new Set(hazards.map(h => h.type)));
         setActiveFilters(types);
     }, [hazards]);
+
+    // Barangay outline overlay — on by default so admins can read areas at a glance
+    const [showBarangays, setShowBarangays] = useState(true);
 
     const filteredHazards = useMemo(() => hazards.filter(h => activeFilters.includes(h.type)), [hazards, activeFilters]);
     const availableTypes = useMemo(() => Array.from(new Set(hazards.map(h => h.type))), [hazards]);
@@ -264,7 +266,7 @@ export default function MapPage({ hazards, focusAlert }: MapPageProps) {
             </Card>
 
             {/* ── Stats row ─────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
                 {HAZARD_STATS.map((stat) => (
                     <Card key={stat.label} className="border-border/50 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                         <CardContent className="p-4">
@@ -303,7 +305,10 @@ export default function MapPage({ hazards, focusAlert }: MapPageProps) {
                             availableTypes={availableTypes}
                             lightPreset={lightPreset}
                             setLightPreset={setLightPreset}
+                            showBarangays={showBarangays}
+                            setShowBarangays={setShowBarangays}
                         />
+                        <BarangayBoundaries visible={showBarangays} hazards={hazards} theme={lightPreset} />
                         <HazardPins hazards={filteredHazards} theme={lightPreset} />
                         <EmergencyRiders
                             theme={lightPreset}

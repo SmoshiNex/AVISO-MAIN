@@ -47,10 +47,6 @@ class DashboardService
             'Pothole'              => 'Potholes',
             'Road Excavation'      => 'Road Excavation',
             'Road Barrier'         => 'Road Barriers',
-            'Traffic Sign'         => 'Traffic Signs',
-            'Traffic Light Red'    => 'TL Red',
-            'Traffic Light Orange' => 'TL Orange',
-            'Traffic Light Green'  => 'TL Green',
         ];
 
         $hazardTypesData = collect($typeMapping)->map(function ($chartName, $dbType) use ($hazardTypesDataRaw) {
@@ -66,10 +62,6 @@ class DashboardService
             'Pothole'              => 'Pothole',
             'Road Excavation'      => 'Excavation',
             'Road Barrier'         => 'Barriers',
-            'Traffic Sign'         => 'Signs',
-            'Traffic Light Red'    => 'TL Red',
-            'Traffic Light Orange' => 'TL Orange',
-            'Traffic Light Green'  => 'TL Green',
         ];
 
         $detectionAccuracyDataRaw = HazardLog::select('type', DB::raw('AVG(confidence) as accuracy'))
@@ -106,10 +98,6 @@ class DashboardService
                 'potholes' => $dayData->where('type', 'Pothole')->sum('count'),
                 'roadExcavation' => $dayData->where('type', 'Road Excavation')->sum('count'),
                 'roadBarriers' => $dayData->where('type', 'Road Barrier')->sum('count'),
-                'trafficSigns'       => $dayData->where('type', 'Traffic Sign')->sum('count'),
-                'trafficLightRed'    => $dayData->where('type', 'Traffic Light Red')->sum('count'),
-                'trafficLightOrange' => $dayData->where('type', 'Traffic Light Orange')->sum('count'),
-                'trafficLightGreen'  => $dayData->where('type', 'Traffic Light Green')->sum('count'),
             ];
         })->toArray();
 
@@ -125,15 +113,16 @@ class DashboardService
     /**
      * Top barangays ranked by the number of physical road hazards recorded in
      * their area. One grouped query, pivoted in PHP — same shape as the 7-day
-     * trend above. Barangays come from hazard_logs.area, which is resolved from
-     * GPS coordinates when the hazard is ingested.
+     * trend above. Barangays come from hazard_logs.area, which
+     * BarangayLocatorService resolves from the real PSGC boundaries; hazards
+     * outside the city have no barangay_code and are left out.
      *
      * @return array<int, array{area: string, potholes: int, roadBarriers: int, roadExcavation: int, total: int}>
      */
     private function getTopHazardBarangays(): array
     {
         $raw = HazardLog::roadHazards()
-            ->where('area', '!=', 'Unknown')
+            ->whereNotNull('barangay_code')
             ->select('area', 'type', DB::raw('count(*) as count'))
             ->groupBy('area', 'type')
             ->get();

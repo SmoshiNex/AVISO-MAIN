@@ -4,13 +4,19 @@ namespace App\Services;
 
 use App\Models\HazardLog;
 use App\Models\Trip;
+use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class HazardLogService
 {
+    public function __construct(private BarangayLocatorService $barangayLocator)
+    {
+        //
+    }
+
     private function applyFilters($query, array $filters)
     {
         if (!empty($filters['search'])) {
@@ -21,8 +27,8 @@ class HazardLogService
             $query->byType($filters['type']);
         }
 
-        if (!empty($filters['area']) && $filters['area'] !== 'all') {
-            $query->byArea($filters['area']);
+        if (!empty($filters['barangay']) && $filters['barangay'] !== 'all') {
+            $query->byBarangay($filters['barangay']);
         }
 
         return $query;
@@ -111,20 +117,13 @@ class HazardLogService
             return $existing;
         }
 
-        $data['area'] = $this->resolveArea(
+        // The server decides the barangay from the real boundaries; anything
+        // the device sent as an area is ignored.
+        $data = array_merge($data, $this->barangayLocator->attributesFor(
             (float) $data['latitude'],
-            (float) $data['longitude']
-        );
+            (float) $data['longitude'],
+        ));
 
-        $prefix = 'HAZ-';
-        if (isset($data['type'])) {
-            if ($data['type'] === 'Traffic Sign') {
-                $prefix = 'TS-';
-            } elseif (in_array($data['type'], ['Traffic Light Red', 'Traffic Light Orange', 'Traffic Light Green'])) {
-                $prefix = 'TL-';
-            }
-        }
-        $data['haz_code']    = $prefix . strtoupper(Str::random(6));
         $data['status']      = HazardLog::STATUS_ACTIVE;
         $data['detected_at'] = $detectedAt;
 
@@ -139,7 +138,40 @@ class HazardLogService
             $data['confidence'] = $data['confidence'] * 100;
         }
 
-        return HazardLog::create($data);
+        // Two riders can reach the same next number at the same moment; the
+        // unique index on haz_code rejects the second, which then takes the
+        // following number.
+        for ($attempt = 1; ; $attempt++) {
+            $data['haz_code'] = $this->generateHazardCode($data['type'], $detectedAt);
+
+            try {
+                return HazardLog::create($data);
+            } catch (UniqueConstraintViolationException $e) {
+                if ($attempt >= 3) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Next readable code for a detection, e.g. POT-20261001-0001: the type
+     * prefix, the detection day in Philippine time, and that type's running
+     * number for the day. Uses the highest existing number, so deleted rows
+     * never cause a reused code.
+     */
+    private function generateHazardCode(string $type, CarbonInterface $detectedAt): string
+    {
+        $prefix = HazardLog::CODE_PREFIXES[$type] . '-'
+            . $detectedAt->copy()->setTimezone(HazardLog::CODE_TIMEZONE)->format('Ymd') . '-';
+
+        $lastCode = HazardLog::where('haz_code', 'like', $prefix . '%')
+            ->orderByDesc('haz_code')
+            ->value('haz_code');
+
+        $next = $lastCode ? (int) substr($lastCode, -4) + 1 : 1;
+
+        return $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
     public function resolve(HazardLog $hazard, int $resolvedBy): bool
@@ -163,7 +195,7 @@ class HazardLogService
     {
         return HazardLog::active()
             ->orderBy('detected_at', 'desc')
-            ->get(['id', 'type', 'area', 'latitude', 'longitude', 'confidence', 'distance', 'rider_code', 'detected_at']);
+            ->get(['id', 'type', 'area', 'barangay_code', 'latitude', 'longitude', 'confidence', 'distance', 'rider_code', 'detected_at']);
     }
 
     public function toCsvResponse(array $filters): StreamedResponse
@@ -202,32 +234,5 @@ class HazardLogService
         $pdf  = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.hazards-pdf', ['logs' => $logs]);
 
         return $pdf->download('hazard_logs.pdf');
-    }
-
-    private function resolveArea(float $lat, float $lng): string
-    {
-        $boxes = [
-            'City Proper'   => [[6.900, 6.912], [122.065, 122.082]],
-            'Calarian'      => [[6.920, 6.945], [122.020, 122.050]],
-            'San Roque'     => [[6.935, 6.950], [122.040, 122.075]],
-            'Sta Maria'     => [[6.915, 6.945], [122.060, 122.082]],
-            'Tugbungan'     => [[6.908, 6.930], [122.075, 122.100]],
-            'Talon-Talon'   => [[6.905, 6.922], [122.093, 122.115]],
-            'Pasonanca'     => [[6.940, 6.970], [122.060, 122.085]],
-            'Putik'         => [[6.920, 6.950], [122.085, 122.120]],
-            'Tumaga'        => [[6.938, 6.958], [122.070, 122.098]],
-            'Lunzuran'      => [[6.950, 6.978], [122.090, 122.108]],
-            'Baliwasan'     => [[6.910, 6.922], [122.050, 122.070]],
-            'San Jose Gusu' => [[6.918, 6.935], [122.040, 122.056]],
-        ];
-
-        foreach ($boxes as $area => [$latRange, $lngRange]) {
-            if ($lat >= $latRange[0] && $lat <= $latRange[1] &&
-                $lng >= $lngRange[0] && $lng <= $lngRange[1]) {
-                return $area;
-            }
-        }
-
-        return 'Unknown';
     }
 }

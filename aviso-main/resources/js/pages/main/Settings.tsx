@@ -26,10 +26,6 @@ const ALL_HAZARD_TYPES = [
     { value: 'Pothole',               label: 'Pothole',               emergency: true  },
     { value: 'Road Excavation',       label: 'Road Excavation',       emergency: true  },
     { value: 'Road Barrier',          label: 'Road Barrier',          emergency: true  },
-    { value: 'Traffic Sign',          label: 'Traffic Sign',          emergency: false },
-    { value: 'Traffic Light Red',     label: 'Traffic Light (Red)',   emergency: false },
-    { value: 'Traffic Light Orange',  label: 'Traffic Light (Orange)',emergency: false },
-    { value: 'Traffic Light Green',   label: 'Traffic Light (Green)', emergency: false },
 ];
 
 const MAP_THEMES = [

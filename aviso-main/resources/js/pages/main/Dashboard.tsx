@@ -19,10 +19,6 @@ const hazardsChartConfig = {
     potholes:           { label: 'Potholes',               color: HAZARD_CHART_COLORS.potholes           },
     roadExcavation:     { label: 'Road Excavation',        color: HAZARD_CHART_COLORS.roadExcavation     },
     roadBarriers:       { label: 'Road Barriers',          color: HAZARD_CHART_COLORS.roadBarriers       },
-    trafficSigns:       { label: 'Traffic Signs',          color: HAZARD_CHART_COLORS.trafficSigns       },
-    trafficLightRed:    { label: 'Traffic Light (Red)',    color: HAZARD_CHART_COLORS.trafficLightRed    },
-    trafficLightGreen:  { label: 'Traffic Light (Green)',  color: HAZARD_CHART_COLORS.trafficLightGreen  },
-    trafficLightOrange: { label: 'Traffic Light (Orange)', color: HAZARD_CHART_COLORS.trafficLightOrange },
 } satisfies ChartConfig;
 
 const hazardTypesChartConfig = hazardsChartConfig;
@@ -55,10 +51,6 @@ interface HazardsOverTimeDatum {
     potholes: number;
     roadExcavation: number;
     roadBarriers: number;
-    trafficSigns: number;
-    trafficLightRed: number;
-    trafficLightOrange: number;
-    trafficLightGreen: number;
 }
 
 interface DashboardProps {
@@ -115,7 +107,7 @@ export default function Dashboard({
                     <Card className="col-span-1 lg:col-span-2 border-border/50 shadow-md">
                         <CardHeader>
                             <CardTitle>Hazards Detected Over Time</CardTitle>
-                            <CardDescription>7-day trend across all road hazard and traffic categories.</CardDescription>
+                            <CardDescription>7-day trend across the three road hazard types.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ChartContainer config={hazardsChartConfig} className="h-[300px] w-full">
@@ -133,22 +125,6 @@ export default function Dashboard({
                                             <stop offset="5%"  stopColor="var(--color-roadBarriers)"      stopOpacity={0.3} />
                                             <stop offset="95%" stopColor="var(--color-roadBarriers)"      stopOpacity={0} />
                                         </linearGradient>
-                                        <linearGradient id="colorTrafficSigns" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%"  stopColor="var(--color-trafficSigns)"      stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="var(--color-trafficSigns)"      stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorTrafficLightRed" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%"  stopColor="var(--color-trafficLightRed)"   stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="var(--color-trafficLightRed)"   stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorTrafficLightGreen" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%"  stopColor="var(--color-trafficLightGreen)" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="var(--color-trafficLightGreen)" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorTrafficLightOrange" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%"  stopColor="var(--color-trafficLightOrange)" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="var(--color-trafficLightOrange)" stopOpacity={0} />
-                                        </linearGradient>
                                     </defs>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
                                     <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
@@ -158,10 +134,6 @@ export default function Dashboard({
                                     <Area type="monotone" dataKey="potholes"           stroke="var(--color-potholes)"           fill="url(#colorPotholes)"          strokeWidth={2} dot={false} />
                                     <Area type="monotone" dataKey="roadExcavation"     stroke="var(--color-roadExcavation)"     fill="url(#colorRoadExcavation)"    strokeWidth={2} dot={false} />
                                     <Area type="monotone" dataKey="roadBarriers"       stroke="var(--color-roadBarriers)"       fill="url(#colorRoadBarriers)"      strokeWidth={2} dot={false} />
-                                    <Area type="monotone" dataKey="trafficSigns"       stroke="var(--color-trafficSigns)"       fill="url(#colorTrafficSigns)"      strokeWidth={2} dot={false} />
-                                    <Area type="monotone" dataKey="trafficLightRed"    stroke="var(--color-trafficLightRed)"    fill="url(#colorTrafficLightRed)"   strokeWidth={2} dot={false} />
-                                    <Area type="monotone" dataKey="trafficLightGreen"  stroke="var(--color-trafficLightGreen)"  fill="url(#colorTrafficLightGreen)" strokeWidth={2} dot={false} />
-                                    <Area type="monotone" dataKey="trafficLightOrange" stroke="var(--color-trafficLightOrange)" fill="url(#colorTrafficLightOrange)" strokeWidth={2} dot={false} />
                                 </AreaChart>
                             </ChartContainer>
                         </CardContent>

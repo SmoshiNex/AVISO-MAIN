@@ -16,6 +16,7 @@ class EmergencyAlertService
     public function __construct(
         private SmsService $smsService,
         private GeocodingService $geocodingService,
+        private BarangayLocatorService $barangayLocator,
     ) {
         //
     }
@@ -64,26 +65,33 @@ class EmergencyAlertService
             ->latest()
             ->first();
 
+        $barangay = $this->barangayLocator->locate($lat, $lng);
+
         if ($existing) {
-            $existing->update(['latitude' => $lat, 'longitude' => $lng]);
+            $existing->update([
+                'latitude'      => $lat,
+                'longitude'     => $lng,
+                'barangay_code' => $barangay['code'] ?? null,
+            ]);
             $this->broadcastQuietly(new EmergencyAlertTriggered($existing));
-            $this->notifyEmergencyContacts($rider, $lat, $lng);
+            $this->notifyEmergencyContacts($rider, $lat, $lng, $barangay['name'] ?? null);
             return $existing;
         }
 
         $alert = EmergencyAlert::create([
-            'user_id'      => $rider->id,
-            'rider_code'   => $rider->username ?? (string) $rider->id,
-            'latitude'     => $lat,
-            'longitude'    => $lng,
-            'triggered_at' => $incidentAt,
-            'status'       => EmergencyAlert::STATUS_PENDING,
+            'user_id'       => $rider->id,
+            'rider_code'    => $rider->username ?? (string) $rider->id,
+            'latitude'      => $lat,
+            'longitude'     => $lng,
+            'barangay_code' => $barangay['code'] ?? null,
+            'triggered_at'  => $incidentAt,
+            'status'        => EmergencyAlert::STATUS_PENDING,
         ]);
 
         $alert->setRelation('user', $rider);
         $this->broadcastQuietly(new EmergencyAlertTriggered($alert));
 
-        $this->notifyEmergencyContacts($rider, $lat, $lng);
+        $this->notifyEmergencyContacts($rider, $lat, $lng, $barangay['name'] ?? null);
 
         return $alert;
     }
@@ -118,10 +126,13 @@ class EmergencyAlertService
      * never delivers any message containing a URL/domain), then the static
      * emergency hotlines so contacts know exactly who else to call.
      */
-    private function notifyEmergencyContacts(User $rider, float $lat, float $lng): void
+    private function notifyEmergencyContacts(User $rider, float $lat, float $lng, ?string $barangayName): void
     {
         $fullName = self::truncate(trim("{$rider->first_name} {$rider->last_name}"), self::NAME_MAX);
-        $address  = $this->geocodingService->reverseGeocode($lat, $lng);
+        // The official barangay (from the PSGC boundaries) is the most useful
+        // place name for a contact; Mapbox is only asked when the rider is
+        // outside Zamboanga City.
+        $address  = $barangayName ?? $this->geocodingService->reverseGeocode($lat, $lng);
         $address  = $address ? self::truncate($address, self::ADDRESS_MAX) : null;
 
         $latStr = number_format($lat, 6, '.', '');

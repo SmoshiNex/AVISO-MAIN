@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { HazardStats } from './components/hazards/HazardStats';
 import { HazardTable } from './components/hazards/HazardTable';
-import { type HazardLog, type PaginatedData } from '@/types/models';
+import { type Barangay, type HazardLog, type PaginatedData } from '@/types/models';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,14 +25,14 @@ interface PageProps {
     filters: {
         search?: string;
         type?: string;
-        area?: string;
+        barangay?: string;
         status?: string;
     };
     types: string[];
-    areas: string[];
+    barangays: Barangay[];
 }
 
-export default function HazardLogs({ hazards, stats, areaCounts, filters, types, areas }: PageProps) {
+export default function HazardLogs({ hazards, stats, areaCounts, filters, types, barangays }: PageProps) {
     const totalHazards = hazards.total;
 
     const exportData = (format: 'csv' | 'pdf') => {
@@ -82,7 +82,7 @@ export default function HazardLogs({ hazards, stats, areaCounts, filters, types,
                 hazards={hazards} 
                 filters={filters} 
                 types={types} 
-                areas={areas} 
+                barangays={barangays} 
             />
             
         </>

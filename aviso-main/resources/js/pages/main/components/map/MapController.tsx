@@ -10,6 +10,7 @@ import {
     Sunset,
     Sunrise,
     Filter,
+    MapPinned,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -31,6 +32,8 @@ interface MapControllerProps {
     availableTypes?: string[];
     lightPreset?: "day" | "night" | "dusk" | "dawn";
     setLightPreset?: (preset: "day" | "night" | "dusk" | "dawn") => void;
+    showBarangays?: boolean;
+    setShowBarangays?: (show: boolean) => void;
 }
 
 export function MapController({
@@ -40,6 +43,8 @@ export function MapController({
     availableTypes = [],
     lightPreset = "day",
     setLightPreset,
+    showBarangays = false,
+    setShowBarangays,
 }: MapControllerProps) {
     const { map, isLoaded } = useMap();
     const [pitch, setPitch] = useState(0);
@@ -359,6 +364,19 @@ export function MapController({
                     <Layers className="mr-1.5 h-4 w-4" />
                     Heatmap
                 </Button>
+
+                {/* Barangay boundaries toggle */}
+                {setShowBarangays && (
+                    <Button
+                        size="sm"
+                        variant={showBarangays ? "default" : "ghost"}
+                        onClick={() => setShowBarangays(!showBarangays)}
+                        aria-pressed={showBarangays}
+                    >
+                        <MapPinned className="mr-1.5 h-4 w-4" />
+                        Barangays
+                    </Button>
+                )}
 
                 <div className="w-px h-5 bg-border mx-1" />
 

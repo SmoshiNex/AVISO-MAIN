@@ -9,49 +9,41 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class HazardLog extends Model
 {
     // ── Type constants ────────────────────────────────────────────────────────
-    const TYPE_POTHOLE               = 'Pothole';
-    const TYPE_ROAD_EXCAVATION       = 'Road Excavation';
-    const TYPE_ROAD_BARRIER          = 'Road Barrier';
-    const TYPE_TRAFFIC_SIGN          = 'Traffic Sign';
-    const TYPE_TRAFFIC_LIGHT_RED     = 'Traffic Light Red';
-    const TYPE_TRAFFIC_LIGHT_ORANGE  = 'Traffic Light Orange';
-    const TYPE_TRAFFIC_LIGHT_GREEN   = 'Traffic Light Green';
+    // Only physical road hazards are recorded. Traffic lights and signs are
+    // live warnings on the rider's device and never reach this table.
+    const TYPE_POTHOLE         = 'Pothole';
+    const TYPE_ROAD_EXCAVATION = 'Road Excavation';
+    const TYPE_ROAD_BARRIER    = 'Road Barrier';
 
     const TYPES = [
         self::TYPE_POTHOLE,
         self::TYPE_ROAD_EXCAVATION,
         self::TYPE_ROAD_BARRIER,
-        self::TYPE_TRAFFIC_SIGN,
-        self::TYPE_TRAFFIC_LIGHT_RED,
-        self::TYPE_TRAFFIC_LIGHT_ORANGE,
-        self::TYPE_TRAFFIC_LIGHT_GREEN,
     ];
+
+    // ── Hazard code: <PREFIX>-<YYYYMMDD>-<NNNN>, e.g. POT-20261001-0001 ───────
+    // The date is the detection day in Philippine time; NNNN counts that
+    // type's detections on that day.
+    const CODE_PREFIXES = [
+        self::TYPE_POTHOLE         => 'POT',
+        self::TYPE_ROAD_EXCAVATION => 'EXC',
+        self::TYPE_ROAD_BARRIER    => 'BAR',
+    ];
+
+    const CODE_TIMEZONE = 'Asia/Manila';
 
     // ── Status constants ──────────────────────────────────────────────────────
     const STATUS_ACTIVE   = 'active';
     const STATUS_RESOLVED = 'resolved';
 
-    // ── Area labels (match the groupings in mockHazards.ts) ──────────────────
-    const AREAS = [
-        'City Proper',
-        'Calarian',
-        'San Roque',
-        'Sta Maria',
-        'Tugbungan',
-        'Talon-Talon',
-        'Pasonanca',
-        'Putik',
-        'Tumaga',
-        'Lunzuran',
-        'Baliwasan',
-        'San Jose Gusu',
-    ];
-
     // ── Eloquent config ───────────────────────────────────────────────────────
+    // `area` holds the barangay name and `barangay_code` its PSGC code, both
+    // resolved from the coordinates by BarangayLocatorService.
     protected $fillable = [
         'haz_code',
         'type',
         'area',
+        'barangay_code',
         'latitude',
         'longitude',
         'confidence',
@@ -105,10 +97,10 @@ class HazardLog extends Model
         return $query->where('type', $type);
     }
 
-    /** Scope: filter by area label */
-    public function scopeByArea(Builder $query, string $area): Builder
+    /** Scope: filter by PSGC barangay code */
+    public function scopeByBarangay(Builder $query, string $barangayCode): Builder
     {
-        return $query->where('area', $area);
+        return $query->where('barangay_code', $barangayCode);
     }
 
     /** Scope: only the three physical road hazard types */

@@ -25,12 +25,10 @@ import {
     AlertCircle,
     Cone,
     Construction,
-    MapPin,
-    StopCircle,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
-import { type HazardLog, type PaginatedData } from "@/types/models";
+import { type Barangay, type HazardLog, type PaginatedData } from "@/types/models";
 import { getHazardTailwindColors } from "@/lib/hazards";
 
 interface HazardTableProps {
@@ -38,23 +36,23 @@ interface HazardTableProps {
     filters: {
         search?: string;
         type?: string;
-        area?: string;
+        barangay?: string;
         status?: string;
     };
     types: string[];
-    areas: string[];
+    barangays: Barangay[];
 }
 
 export function HazardTable({
     hazards,
     filters,
     types,
-    areas,
+    barangays,
 }: HazardTableProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || "");
 
     const handleFilterChange = (
-        key: "type" | "area" | "status",
+        key: "type" | "barangay" | "status",
         value: string,
     ) => {
         router.get(
@@ -91,12 +89,6 @@ export function HazardTable({
                 return <Construction className="w-4 h-4" />;
             case "Road Barrier":
                 return <Cone className="w-4 h-4" />;
-            case "Traffic Sign":
-                return <MapPin className="w-4 h-4" />;
-            case "Traffic Light Red":
-            case "Traffic Light Orange":
-            case "Traffic Light Green":
-                return <StopCircle className="w-4 h-4" />;
             default:
                 return <AlertCircle className="w-4 h-4" />;
         }
@@ -138,17 +130,17 @@ export function HazardTable({
                     </Select>
 
                     <Select
-                        value={filters.area || "all"}
-                        onValueChange={(v) => handleFilterChange("area", v)}
+                        value={filters.barangay || "all"}
+                        onValueChange={(v) => handleFilterChange("barangay", v)}
                     >
-                        <SelectTrigger className="w-[160px] bg-background">
-                            <SelectValue placeholder="All Areas" />
+                        <SelectTrigger className="w-[200px] bg-background">
+                            <SelectValue placeholder="All Barangays" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Areas</SelectItem>
-                            {areas.map((a) => (
-                                <SelectItem key={a} value={a}>
-                                    {a}
+                        <SelectContent className="max-h-72">
+                            <SelectItem value="all">All Barangays</SelectItem>
+                            {barangays.map((b) => (
+                                <SelectItem key={b.code} value={b.code}>
+                                    {b.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>

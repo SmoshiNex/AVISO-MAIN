@@ -16,6 +16,7 @@ class EmergencyAlert extends Model
         'rider_code',
         'latitude',
         'longitude',
+        'barangay_code',
         'triggered_at',
         'status',
         'resolved_at',

@@ -26,11 +26,10 @@ class DatabaseSeeder extends Seeder
             'role'           => 'admin',
         ]);
 
+        // Reference data only — no demo riders, hazards or trips, so a fresh
+        // database starts with real activity alone.
         $this->call([
             AddressSeeder::class,
-            RiderSeeder::class,
-            HazardLogSeeder::class,
-            TripSeeder::class,
         ]);
     }
 }
