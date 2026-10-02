@@ -21,6 +21,9 @@ class SosRequest extends FormRequest
             // present it is the idempotency key that stops the app's retry
             // queue from creating a duplicate alert for the same incident.
             'triggered_at' => ['nullable', 'date'],
+            // Crash id from the IoT unit, when the SOS started from a device
+            // crash. Lets the server merge it with the device's own backup SOS.
+            'event_uid'    => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9_-]+$/'],
         ];
     }
 }

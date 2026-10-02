@@ -113,3 +113,43 @@ export interface SosAlertResolvedPayload {
     status: string;
     resolved_at: string | null;
 }
+
+// ─── Crash detection log (IoT unit classifications) ──────────────────────────
+
+export type RiderEventType = 'normal' | 'hard_braking' | 'road_bump' | 'crash';
+
+export interface RiderEventLog {
+    id: number;
+    event_uid: string | null;
+    rider_code: string;
+    trip_id: number | null;
+    event_type: RiderEventType;
+    latitude: string;
+    longitude: string;
+    area: string | null;
+    acceleration_peak: string;
+    vertical_g: string | null;
+    horizontal_g: string | null;
+    gyro_peak_dps: string | null;
+    tilt_deg: string | null;
+    status: string;
+    detected_at: string;
+}
+
+export interface MinAvgMax {
+    min: number | null;
+    avg: number | null;
+    max: number | null;
+}
+
+/** Per-category ranges used to set the unit's detection thresholds. */
+export interface RiderEventTypeStats {
+    type: RiderEventType;
+    label: string;
+    total: number;
+    g: MinAvgMax;
+    vertical_g: MinAvgMax;
+    horizontal_g: MinAvgMax;
+    gyro_dps: MinAvgMax;
+    tilt_deg: MinAvgMax;
+}

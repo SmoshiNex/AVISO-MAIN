@@ -39,6 +39,7 @@ Route::middleware('web')->group(function () {
         })->name('map');
         
         Route::get('/hazards', [\App\Http\Controllers\Admin\HazardLogsController::class, 'index'])->name('hazards.index');
+        Route::get('/crash-logs', [\App\Http\Controllers\Admin\CrashDetectionLogsController::class, 'index'])->name('crash-logs.index');
 
         // Settings
         Route::get('/settings', [\App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');

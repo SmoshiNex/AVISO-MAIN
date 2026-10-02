@@ -22,6 +22,7 @@ class EmergencyController extends Controller
             $request->latitude,
             $request->longitude,
             $request->input('triggered_at'),
+            $request->input('event_uid'),
         );
 
         return response()->json([

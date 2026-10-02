@@ -1,9 +1,18 @@
 // ============================================================
 // AVISO — Storage Cleanup (Enhanced)
+// ------------------------------------------------------------
+// Deletes the threshold-gathering files. Only run this AFTER
+// retrieval-littlefs and after checking the saved CSVs open.
 // ============================================================
 #include <LittleFS.h>
 
-const char* FILE_TO_DELETE = "/sensor_stream_log.csv";  // change if clearing deployment_log.csv
+// Files written by threshold-gathering v5
+const char* FILES_TO_DELETE[] = {
+  "/threshold_log_v5.csv",
+  "/threshold_sessions_v5.csv",
+  "/sensor_stream_log_v2.csv",   // older v4 sessions, if still on the unit
+};
+const int FILE_COUNT = sizeof(FILES_TO_DELETE) / sizeof(FILES_TO_DELETE[0]);
 const unsigned long CONFIRMATION_DELAY_MS = 5000;  // pause before deleting, giving you a chance to abort
 
 void listAllFiles() {
@@ -41,27 +50,32 @@ void setup() {
   listAllFiles();
   Serial.println("");
 
-  if (!LittleFS.exists(FILE_TO_DELETE)) {
-    Serial.println("[INFO] File not found: " + String(FILE_TO_DELETE));
+  bool anyToDelete = false;
+  for (int i = 0; i < FILE_COUNT; i++) {
+    if (!LittleFS.exists(FILES_TO_DELETE[i])) continue;
+    File checkFile = LittleFS.open(FILES_TO_DELETE[i], "r");
+    Serial.println("[WARNING] About to permanently delete: " + String(FILES_TO_DELETE[i]) +
+                   "  (" + String(checkFile.size()) + " bytes)");
+    checkFile.close();
+    anyToDelete = true;
+  }
+  if (!anyToDelete) {
     Serial.println("[INFO] Nothing to delete. Check the file list above if this is unexpected.");
     return;
   }
 
-  File checkFile = LittleFS.open(FILE_TO_DELETE, "r");
-  size_t sizeBeforeDelete = checkFile.size();
-  checkFile.close();
-
-  Serial.println("[WARNING] About to permanently delete: " + String(FILE_TO_DELETE));
-  Serial.println("[WARNING] File size: " + String(sizeBeforeDelete) + " bytes");
   Serial.println("[WARNING] Make sure you have already retrieved this data before continuing.");
   Serial.println("[WARNING] Deleting in " + String(CONFIRMATION_DELAY_MS / 1000) + " seconds...");
   Serial.println("[WARNING] Reset the board now if you have NOT retrieved this data yet.");
   delay(CONFIRMATION_DELAY_MS);
 
-  if (LittleFS.remove(FILE_TO_DELETE)) {
-    Serial.println("[DONE] Deleted: " + String(FILE_TO_DELETE));
-  } else {
-    Serial.println("[ERROR] Delete failed — file may be in use or corrupted.");
+  for (int i = 0; i < FILE_COUNT; i++) {
+    if (!LittleFS.exists(FILES_TO_DELETE[i])) continue;
+    if (LittleFS.remove(FILES_TO_DELETE[i])) {
+      Serial.println("[DONE] Deleted: " + String(FILES_TO_DELETE[i]));
+    } else {
+      Serial.println("[ERROR] Delete failed: " + String(FILES_TO_DELETE[i]));
+    }
   }
 
   size_t freeBytes = LittleFS.totalBytes() - LittleFS.usedBytes();

@@ -5,8 +5,10 @@ use App\Http\Controllers\Rider\AddressController;
 use App\Http\Controllers\Rider\EmergencyContactController;
 use App\Http\Controllers\Rider\EmergencyController;
 use App\Http\Controllers\Rider\HazardLogController;
+use App\Http\Controllers\Rider\IotDeviceController;
 use App\Http\Controllers\Rider\ProfileController;
 use App\Http\Controllers\Rider\RiderAuthController;
+use App\Http\Controllers\Rider\RiderEventController;
 use App\Http\Controllers\Rider\TripController;
 use App\Http\Controllers\Rider\TripHistoryController;
 use App\Http\Controllers\Rider\TtsController;
@@ -55,6 +57,17 @@ Route::prefix('rider')->group(function () {
 
         // ── Emergency SOS ──────────────────────────────────────────────────────
         Route::post('/emergency/sos', [EmergencyController::class, 'sos']);
+
+        // ── IoT crash-detection unit ───────────────────────────────────────────
+        Route::get('/iot/device',           [IotDeviceController::class, 'show']);
+        Route::post('/iot/pairing-code',    [IotDeviceController::class, 'pairingCode'])->middleware('throttle:5,1');
+        Route::delete('/iot/device',        [IotDeviceController::class, 'destroy']);
+
+        // ── Crash-detection log from the IoT unit (all 4 categories) ──────────
+        Route::get('/events',         [RiderEventController::class, 'index']);
+        Route::get('/events/stats',   [RiderEventController::class, 'stats']);
+        Route::get('/events/export',  [RiderEventController::class, 'export'])->middleware('throttle:10,1');
+        Route::post('/events',        [RiderEventController::class, 'store'])->middleware('throttle:120,1');
 
         // ── Emergency contacts ─────────────────────────────────────────────────
         Route::get('/emergency-contacts',              [EmergencyContactController::class, 'index']);

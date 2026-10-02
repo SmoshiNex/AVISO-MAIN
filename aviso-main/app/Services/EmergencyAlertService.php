@@ -28,13 +28,26 @@ class EmergencyAlertService
      * idempotency key: the mobile app retries an unsent SOS on a timer, and
      * without this every retry that lands after an admin resolved the alert
      * would insert a fresh pending row and re-SMS every contact.
+     *
+     * $eventUid is the crash id from the IoT unit. The same crash can arrive
+     * twice — from the phone after its countdown and from the device's own
+     * Wi-Fi backup — and must still raise exactly one alert.
      */
     public function triggerSos(
         User $rider,
         float $lat,
         float $lng,
         ?string $triggeredAt = null,
+        ?string $eventUid = null,
+        string $source = EmergencyAlert::SOURCE_PHONE,
     ): EmergencyAlert {
+        if ($eventUid !== null) {
+            $sameCrash = EmergencyAlert::with('user')->where('event_uid', $eventUid)->first();
+            if ($sameCrash) {
+                return $sameCrash;
+            }
+        }
+
         $incidentAt = $triggeredAt ? Carbon::parse($triggeredAt) : now();
 
         // Idempotency: the same incident re-sent by the app's retry queue must
@@ -72,6 +85,7 @@ class EmergencyAlertService
                 'latitude'      => $lat,
                 'longitude'     => $lng,
                 'barangay_code' => $barangay['code'] ?? null,
+                'event_uid'     => $existing->event_uid ?? $eventUid,
             ]);
             $this->broadcastQuietly(new EmergencyAlertTriggered($existing));
             $this->notifyEmergencyContacts($rider, $lat, $lng, $barangay['name'] ?? null);
@@ -80,6 +94,8 @@ class EmergencyAlertService
 
         $alert = EmergencyAlert::create([
             'user_id'       => $rider->id,
+            'event_uid'     => $eventUid,
+            'source'        => $source,
             'rider_code'    => $rider->username ?? (string) $rider->id,
             'latitude'      => $lat,
             'longitude'     => $lng,

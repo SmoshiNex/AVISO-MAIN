@@ -11,8 +11,13 @@ class EmergencyAlert extends Model
     const STATUS_ACKNOWLEDGED = 'acknowledged';
     const STATUS_RESOLVED     = 'resolved';
 
+    const SOURCE_PHONE = 'phone';
+    const SOURCE_IOT   = 'iot';
+
     protected $fillable = [
         'user_id',
+        'event_uid',
+        'source',
         'rider_code',
         'latitude',
         'longitude',

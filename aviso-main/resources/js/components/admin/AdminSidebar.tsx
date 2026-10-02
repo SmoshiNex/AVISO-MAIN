@@ -10,6 +10,7 @@ import {
     LayoutDashboard,
     Users,
     Siren,
+    Activity,
 } from "lucide-react";
 import {
     Sidebar,
@@ -53,6 +54,11 @@ const navGroups = [
                 title: "SOS Alerts",
                 url: "/sos-alerts",
                 icon: Siren,
+            },
+            {
+                title: "Crash Detection Logs",
+                url: "/crash-logs",
+                icon: Activity,
             },
         ],
     },
